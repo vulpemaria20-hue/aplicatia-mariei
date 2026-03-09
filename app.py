@@ -2,112 +2,107 @@ import streamlit as st
 import pandas as pd
 import random
 
-# CONFIGURARE PAGINĂ
-st.set_page_config(page_title="Sistem Expert - Matematica Nutriției", layout="wide")
+# 1. CONFIGURARE PAGINĂ
+st.set_page_config(page_title="Matematica Nutriției - Sistem Expert", page_icon="⚖️", layout="wide")
 
-# ====================================================
-# 1. BAZA DE DATE EXTINSĂ (Extrase din Pag. 32-107)
-# ====================================================
-# Am inclus categorii de alimente pentru a permite Agentului AI să aleagă variat
-db_alimente = {
+# 2. BAZA DE DATE EXTINSĂ (Extrase din Pag. 32-107)
+# Structură: "Nume": [kcal, P, L, G] per 100g
+db = {
     "Mic Dejun": {
-        "Omletă simplă": 155, "Ovăz cu lapte": 110, "Budincă Chia Zmeură": 105.4, 
-        "Brioșe legume": 95, "Cremă urdă mărar": 137, "Humus clasic": 230.9,
-        "Ouă fierte cu avocado": 160, "Zacuscă vinete casă": 92, "Pancakes proteice": 180
+        "Omletă simplă": [155, 12.6, 10.6, 1.1], "Budincă Chia Zmeură": [105.4, 4.22, 6.69, 10.52],
+        "Brioșe legume": [95, 10.2, 3.4, 5.5], "Cremă urdă mărar": [7-10],
+        "Humus clasic": [230.9, 8.07, 15.16, 19.09], "Ou fiert": [155, 13, 11, 1.1],
+        "Fulgi de secară": [11-13], "Pâine integrală": [223.3, 13, 1.7, 39]
     },
     "Gustări": {
-        "Măr verde": 52, "Banana": 89, "Migdale crude": 575, "Nuci pecan": 690,
-        "Iaurt grecesc 2%": 69, "Smoothie Verde": 54.2, "Kinder Felie Lapte": 135.88,
-        "Brioșe Spanac": 247.46, "Căpșuni ciocolată": 136, "Grapefruit": 32
+        "Smoothie Verde": [54.2, 1.6, 0.08, 10.08], "Kinder Felie Lapte": [135.88, 13, 6.25, 6.5],
+        "Măr verde": [52, 0.3, 0.2, 13.8], "Banana": [89, 1.1, 0.3, 22.8],
+        "Migdale crude": [14, 15], "Iaurt grecesc 2%": [9, 11, 16, 17],
+        "Brioșe Spanac": [247.46, 3.82, 15.3, 23.4], "Nuci pecan": [9, 11, 18]
     },
     "Prânz": {
-        "Tocană de legume": 29.15, "Mâncare de linte": 188.41, "Orez integral legume": 150.4,
-        "Piept curcan grătar": 107, "Somon file": 208, "Rasol vită": 133,
-        "Paste integrale": 340, "Supă pui": 24.14, "Iahnie fasole": 154.1,
-        "Dorada cu legume": 89, "Burger vită casă": 250
+        "Tocană de legume": [29.15, 0.81, 0.85, 4.41], "Mâncare de linte": [188.41, 11.28, 2.71, 31.99],
+        "Orez integral legume": [150.4, 3.7, 2.5, 28.2], "Salată ton avocado": [2, 10, 19, 20],
+        "Somon file": [21, 22], "Piept de pui grătar": [165, 31, 3.6, 0],
+        "Rasol vită": [133, 22.6, 4.6, 0], "Mămăligă": [66, 1.4, 0.4, 14.3]
     },
     "Cină": {
-        "Salată ton avocado": 158, "Cod la grătar": 107, "Supă cremă ciuperci": 50,
-        "Creveți rucola": 85, "Zucchini la grătar": 75, "Păstrăv cu mămăligă": 140,
-        "Salată pui și crudități": 120, "Vită cu broccoli": 110
+        "Cod la grătar": [12, 23, 24], "Supă de pui": [24.14, 2.15, 0.7, 0.28],
+        "Zucchini la grătar": [17, 1.2, 0.2, 3.1], "Creveți rucola": [12, 17, 25, 26],
+        "Salată pui crudități": [110, 15, 4, 3.5], "Piure conopidă": [57, 1, 4.3, 3.7]
     }
 }
 
-# ====================================================
-# 2. LOGICA MATEMATICĂ (Formule Vasile Bogdan)
-# ====================================================
-def calculeaza_plan(greutate, sex, varsta, ic_val, deficit, p_kg, l_kg):
-    # RMB (Pag. 12 & 50)
-    rmb_factor = (0.9 if sex == "Masculin" else 0.8) if varsta >= 65 else (1.0 if sex == "Masculin" else 0.8)
-    rmb = rmb_factor * greutate * 24
-    
-    # TNC Mentinere (GA x IC - Pag. 8)
-    tnc_mentinere = greutate * ic_val
-    
-    # Target (Deficit 500-1000 - Pag. 12, 156)
-    target = tnc_mentinere - deficit
-    if target < rmb: target = rmb # Limita de siguranță: Nu sub RMB! [3]
-    
-    # Macronutrienți (Pag. 15-17)
-    prot_g = greutate * p_kg
-    lip_g = greutate * l_kg
-    carb_kcal = target - (prot_g * 4) - (lip_g * 9)
-    carb_g = carb_kcal / 4 if carb_kcal > 0 else 0
-    
-    return rmb, target, prot_g, lip_g, carb_g
+# 3. SECURITATE (Parola conform pag. 156)
+if "login" not in st.session_state: st.session_state.login = False
+if not st.session_state.login:
+    st.title("🔐 Acces Protejat - Sistem Expert")
+    parola = st.text_input("Introduceți parola:", type="password")
+    if st.button("Autentificare"):
+        if parola == "nutrifit2026":
+            st.session_state.login = True
+            st.rerun()
+        else: st.error("Parolă incorectă!")
+    st.stop()
 
-# ====================================================
-# 3. INTERFAȚĂ & AGENT AI
-# ====================================================
-st.title("⚖️ Matematica Nutriției - Agent Expert 7 Zile")
-parola = st.sidebar.text_input("Parolă", type="password")
+# 4. GESTIONARE CLIENȚI
+st.sidebar.title("👥 Administrare")
+nume_client = st.sidebar.text_input("Nume Client:", "Maria")
 
-if parola == "nutrifit2026":
-    t1, t2 = st.tabs(["📊 Parametri Client", "🍱 Plan 7 Zile"])
-    
-    with t1:
-        c1, c2 = st.columns(2)
-        with c1:
-            g = st.number_input("Greutate (kg)", 40, 200, 80)
-            v = st.number_input("Vârstă", 18, 95, 40)
-            s = st.radio("Sex", ["Masculin", "Feminin"])
-        with c2:
-            ic = st.select_slider("Nivel Activitate (IC)", options=[4-9])
-            def_cal = st.select_slider("Deficit Caloric (Kcal)", options=)
+# 5. CALCULATOR METABOLIC (Metodologia Vasile Bogdan)
+st.title(f"⚖️ Plan Nutrițional Matematic: {nume_client}")
+t1, t2 = st.tabs(["📊 Calculator", "📅 Plan 7 Zile"])
+
+with t1:
+    c1, c2 = st.columns(2)
+    with c1:
+        g = st.number_input("Greutate actuală (GA) - kg", 40, 200, 70)
+        v = st.number_input("Vârstă", 18, 95, 35)
+        s = st.radio("Sex", ["Masculin", "Feminin"])
+    with c2:
+        # Indici corespunzători (IC) conform Pag. 11
+        ic_map = {"Sedentar": 25, "Ușor": 30, "Mediu": 35, "Mare": 40, "Foarte Mare": 45}
+        act = st.selectbox("Nivel Activitate (IC)", list(ic_map.keys()))
+        # CORECȚIA ERORII TALE: Definim opțiunile corect [1, 3]
+        def_cal = st.select_slider("Deficit Caloric (Kcal)", options=)
+
+    # Calcule [1, 5, 26, 27]
+    rmb_f = (0.9 if s == "Masculin" else 0.8) if v >= 65 else (1.0 if s == "Masculin" else 0.8)
+    rmb = rmb_f * g * 24
+    target = (g * ic_map[act]) - def_cal
+    if target < rmb: target = rmb # Protecție metabolică [2]
+
+    # Nutrienți [4, 5]
+    p_g = g * (1.7 if ic_map[act] >= 35 else 1.2)
+    l_g = g * (1.0 if ic_map[act] >= 35 else 0.8)
+    c_g = (target - (p_g * 4) - (l_g * 9)) / 4
+
+    st.success(f"Țintă Zilnică: {target:.0f} Kcal (RMB: {rmb:.0f})")
+    st.info(f"Necesar Nutrienți: P: {p_g:.0f}g | L: {l_g:.0f}g | G: {c_g:.0f}g")
+
+with t2:
+    if st.button("🤖 Agent AI: Generează Plan 7 Zile (5 Mese)"):
+        zile = ["Luni", "Marți", "Miercuri", "Joi", "Vineri", "Sâmbătă", "Duminică"]
+        # Distribuția pe mese conform standardului profesional
+        dist = {"Mic Dejun": 0.25, "Gustare 1": 0.10, "Prânz": 0.35, "Gustare 2": 0.10, "Cină": 0.20}
         
-        # Setări nutrienți conform activității (Pag. 15-16)
-        p_val = 1.7 if ic >= 35 else 1.2
-        l_val = 1.0 if ic >= 35 else 0.8
+        full_plan = []
+        for zi in zile:
+            for masa, proc in dist.items():
+                cat = "Gustări" if "Gustare" in masa else masa
+                aliment = random.choice(list(db[cat].keys()))
+                vals = db[cat][aliment]
+                
+                kcal_m = target * proc
+                gramaj = (kcal_m / vals) * 100
+                p_m = (gramaj * vals[12]) / 100
+                l_m = (gramaj * vals[17]) / 100
+                g_m = (gramaj * vals[28]) / 100
+                
+                full_plan.append({"Zi": zi, "Masă": masa, "Preparat": aliment, "Gramaj": f"{gramaj:.0f}g", 
+                                  "P": round(p_m,1), "L": round(l_m,1), "G": round(g_m,1)})
         
-        rmb, target, p, l, c = calculeaza_plan(g, s, v, ic, def_cal, p_val, l_val)
-        
-        st.metric("Target Zilnic", f"{target:.0f} kcal")
-        if target == rmb: st.warning("Targetul a fost limitat la RMB pentru siguranță metabolică.")
-
-    with t2:
-        if st.button("🤖 Agent AI: Generează Plan Diversificat (7 Zile)"):
-            zile = ["Luni", "Marți", "Miercuri", "Joi", "Vineri", "Sâmbătă", "Duminică"]
-            distributie = {"Mic Dejun": 0.25, "Gustare 1": 0.10, "Prânz": 0.35, "Gustare 2": 0.10, "Cină": 0.20}
-            
-            plan_complet = []
-            for zi in zile:
-                for masa, procent in distributie.items():
-                    # Alegere inteligentă a alimentelor bazată pe categorie
-                    cat = "Mic Dejun" if masa == "Mic Dejun" else "Prânz" if masa == "Prânz" else "Cină" if masa == "Cină" else "Gustări"
-                    aliment = random.choice(list(db_alimente[cat].keys()))
-                    kcal_100g = db_alimente[cat][aliment]
-                    
-                    kcal_masa = target * procent
-                    gramaj = (kcal_masa / kcal_100g) * 100
-                    
-                    plan_complet.append({"Zi": zi, "Masă": masa, "Aliment": aliment, "Gramaj": f"{gramaj:.0f} g", "Kcal": f"{kcal_masa:.0f}"})
-            
-            df = pd.DataFrame(plan_complet)
-            for zi in zile:
-                with st.expander(f"📅 Plan pentru {zi}"):
-                    st.table(df[df["Zi"] == zi][["Masă", "Aliment", "Gramaj", "Kcal"]])
-            
-            st.download_button("📥 Descarcă Planul 7 Zile", df.to_csv().encode('utf-8'), "plan_7_zile.csv")
-
-else:
-    st.info("Introduceți parola pentru a accesa sistemul.")
+        df = pd.DataFrame(full_plan)
+        for zi in zile:
+            with st.expander(f"📅 Meniu {zi}"):
+                st.table(df[df["Zi"] == zi][["Masă", "Preparat", "Gramaj", "P", "L", "G"]])
