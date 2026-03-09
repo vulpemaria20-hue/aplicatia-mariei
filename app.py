@@ -1,110 +1,69 @@
-import React, { useState } from 'react';
-import * as XLSX from 'xlsx';
-import { saveAs } from 'file-saver';
+import streamlit as st
+import pandas as pd
+from io import BytesIO
 
-const GestionareDateExcel = () => {
-  // 1. Datele tale (pot veni dintr-un API sau formular)
-  const [produse, setProduse] = useState([
-    { id: 1, nume: "Laptop Pro", pret: 4500, cantitate: 2 },
-    { id: 2, nume: "Monitor 4K", pret: 1800, cantitate: 5 },
-    { id: 3, nume: "Tastatură Mecanică", pret: 450, cantitate: 10 },
-  ]);
+# Configurare pagină (opțional)
+st.set_page_config(page_title="Aplicația Mariei", layout="centered")
 
-  const [numeFisier, setNumeFisier] = useState("Raport_Vanzari_2024");
+def main():
+    st.title("📊 Finalizare și Export Date")
+    st.write("Verifică datele de mai jos înainte de a genera fișierul Excel final.")
 
-  // 2. Funcția de Export cu procesare de date
-  const handleExport = () => {
-    // Adăugăm calcule automate înainte de export (ex: Total per rând)
-    const dateProcesate = produse.map(p => ({
-      "ID Produs": p.id,
-      "Denumire": p.nume,
-      "Preț Unitar (RON)": p.pret,
-      "Cantitate": p.cantitate,
-      "Total Fără TVA": p.pret * p.cantitate,
-      "Total cu TVA (19%)": (p.pret * p.cantitate) * 1.19
-    }));
+    # 1. Datele tale (Exemplu de tabel - aici poți pune datele tale reale)
+    data = {
+        "ID": [1, 2, 3, 4],
+        "Descriere": ["Produs A", "Produs B", "Serviciu C", "Mentenanță"],
+        "Cantitate": [10, 5, 2, 1],
+        "Pret Unitar (RON)": [100, 250, 1500, 500]
+    }
 
-    // Crearea worksheet-ului
-    const worksheet = XLSX.utils.json_to_sheet(dateProcesate);
+    df = pd.DataFrame(data)
+
+    # 2. Logica de calcul (Calculăm Totalul automat)
+    df["Total Fara TVA"] = df["Cantitate"] * df["Pret Unitar (RON)"]
+    df["TVA (19%)"] = df["Total Fara TVA"] * 0.19
+    df["Total de Plata"] = df["Total Fara TVA"] + df["TVA (19%)"]
+
+    # Afișarea tabelului în interfață
+    st.subheader("Previzualizare Tabel")
+    st.dataframe(df, use_container_width=True)
+
+    # 3. Secțiunea de Export
+    st.divider()
+    st.subheader("💾 Exportă Rezultatele")
     
-    // Setăm lățimea coloanelor pentru a arăta bine în Excel
-    worksheet['!cols'] = [
-      { wch: 10 }, { wch: 25 }, { wch: 15 }, { wch: 10 }, { wch: 15 }, { wch: 18 }
-    ];
-
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Inventar");
-
-    // Generăm buffer-ul Excel
-    const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+    col1, col2 = st.columns(2)
     
-    // Creăm Blob-ul și salvăm fișierul
-    const data = new Blob([excelBuffer], { type: 'application/octet-stream' });
-    saveAs(data, `${numeFisier}.xlsx`);
-  };
+    with col1:
+        nume_fisier = st.text_input("Numele fișierului:", "raport_final_maria")
+    
+    with col2:
+        # Funcție pentru conversia în Excel (folosind librăria xlsxwriter)
+        def convert_df_to_excel(df_to_convert):
+            output = BytesIO()
+            with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                df_to_convert.to_excel(writer, index=False, sheet_name='Date_Procesate')
+                
+                # Accesăm obiectul workbook pentru a adăuga formatări dacă e nevoie
+                workbook = writer.book
+                worksheet = writer.sheets['Date_Procesate']
+                
+                # Ajustăm automat lățimea coloanelor
+                for i, col in enumerate(df_to_convert.columns):
+                    column_len = max(df_to_convert[col].astype(str).str.len().max(), len(col)) + 2
+                    worksheet.set_column(i, i, column_len)
+            
+            return output.getvalue()
 
-  return (
-    <div style={{ family: 'Arial', padding: '40px', maxWidth: '800px', margin: 'auto' }}>
-      <h2>Panou Management Date</h2>
-      
-      {/* Input pentru personalizarea numelui fișierului */}
-      <div style={{ marginBottom: '20px' }}>
-        <label>Nume fișier export: </label>
-        <input 
-          type="text" 
-          value={numeFisier} 
-          onChange={(e) => setNumeFisier(e.target.value)}
-          style={{ padding: '8px', marginLeft: '10px', borderRadius: '4px', border: '1px solid #ccc' }}
-        />
-      </div>
+        excel_data = convert_df_to_excel(df)
 
-      {/* Tabel Vizualizare */}
-      <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '20px' }}>
-        <thead>
-          <tr style={{ backgroundColor: '#f4f4f4' }}>
-            <th style={tableStyle}>Produs</th>
-            <th style={tableStyle}>Preț</th>
-            <th style={tableStyle}>Cantitate</th>
-          </tr>
-        </thead>
-        <tbody>
-          {produse.map(p => (
-            <tr key={p.id}>
-              <td style={tableStyle}>{p.nume}</td>
-              <td style={tableStyle}>{p.pret} RON</td>
-              <td style={tableStyle}>{p.cantitate}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+        # Butonul de descărcare (fără emoji-uri problematice în codul de bază)
+        st.download_button(
+            label="Descarca fisierul Excel",
+            data=excel_data,
+            file_name=f"{nume_fisier}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
 
-      {/* Buton de Finalizare și Export */}
-      <button 
-        onClick={handleExport}
-        style={{
-          backgroundColor: '#1D6F42',
-          color: 'white',
-          padding: '12px 24px',
-          border: 'none',
-          borderRadius: '6px',
-          cursor: 'pointer',
-          fontSize: '16px',
-          fontWeight: 'bold',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '10px'
-        }}
-      >
-        📥 Finalizează și Exportă în Excel
-      </button>
-    </div>
-  );
-};
-
-const tableStyle = {
-  border: '1px solid #ddd',
-  padding: '12px',
-  textAlign: 'left'
-};
-
-export default GestionareDateExcel;
+if __name__ == "__main__":
+    main()
