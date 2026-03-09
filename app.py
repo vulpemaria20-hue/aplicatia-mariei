@@ -4,65 +4,64 @@ import pandas as pd
 # 1. Configurare Pagină
 st.set_page_config(page_title="Aplicația Mariei", layout="centered", page_icon="👩‍💻")
 
-# --- VERIFICARE STRICTĂ PAROLĂ ---
+# --- INITIALIZARE VARIABILE DE SESIUNE ---
 if "autentificat" not in st.session_state:
     st.session_state["autentificat"] = False
+if "ai_executat" not in st.session_state:
+    st.session_state["ai_executat"] = False
 
+# --- PASUL 0: LOGARE ---
 if not st.session_state["autentificat"]:
-    # Această parte este singura vizibilă la început
     st.markdown("# 👩‍💻 Aplicația Mariei")
     st.subheader("🔐 Acces Securizat")
+    parola = st.text_input("Introdu parola de acces:", type="password")
     
-    parola = st.text_input("Introdu parola:", type="password")
-    
-    if st.button("Intră în Aplicație"):
+    if st.button("Verifică și Intră"):
         if parola == "nutrifit2026":
             st.session_state["autentificat"] = True
             st.rerun()
         else:
             st.error("❌ Parolă incorectă!")
-    
-    # OPRIM TOTUL AICI. Nimic de mai jos nu va fi citit de browser
     st.stop()
 
-# --- DIN ACEST PUNCT UTILIZATORUL ESTE LOGAT ---
+# --- DIN ACEST PUNCT ESTI LOGAT ---
 
-if "etapa" not in st.session_state:
-    st.session_state["etapa"] = "selectie"
-
-# Meniu lateral pentru Ieșire
-if st.sidebar.button("Logout"):
+# Meniu Logout
+if st.sidebar.button("Ieșire (Logout)"):
     st.session_state["autentificat"] = False
+    st.session_state["ai_executat"] = False
     st.rerun()
 
 st.markdown("# 👩‍💻 Aplicația Mariei")
 
-# ETAPA DE SELECȚIE (Apare prima după login)
-if st.session_state["etapa"] == "selectie":
+# --- PASUL 1: SELECȚIE (Vizibil doar dacă AI nu a fost executat) ---
+if not st.session_state["ai_executat"]:
     st.info("👋 Bine ai venit! Urmează pașii de mai jos.")
     st.markdown("### 📝 Pasul 1: Selecție Opțiuni")
     
-    # Lista de 200 opțiuni solicitată
     optiuni_200 = [f"Serviciu NutriFit #{i}" for i in range(1, 201)]
     selectie = st.multiselect("Alege din cele 200 de configurații:", options=optiuni_200)
 
     if selectie:
         st.divider()
         st.markdown("### 🤖 Pasul 2: Activare Agent AI")
+        st.write("Apasă butonul de mai jos pentru a genera raportul final.")
         if st.button("Procesează cu Agentul AI"):
-            st.session_state["date_finale"] = selectie
-            st.session_state["etapa"] = "export"
+            st.session_state["date_selectate"] = selectie
+            st.session_state["ai_executat"] = True
             st.rerun()
+    else:
+        st.warning("Te rugăm să selectezi cel puțin o opțiune pentru a continua.")
 
-# ETAPA DE TABEL ȘI EXPORT (Apare doar după butonul AI)
-elif st.session_state["etapa"] == "export":
+# --- PASUL 2: REZULTAT FINAL (Vizibil DOAR după ce ai apăsat butonul AI) ---
+else:
     st.success("✅ Agentul AI a finalizat procesarea!")
     
-    st.subheader("📊 Previzualizare Tabel")
+    st.subheader("📊 Previzualizare Tabel Final")
     
-    # Construim tabelul exact ca în prima ta imagine
+    # Construim tabelul exact cum ai cerut
     rows = []
-    for idx, item in enumerate(st.session_state["date_finale"]):
+    for idx, item in enumerate(st.session_state["date_selectate"]):
         pret = 150.0
         rows.append({
             "ID": idx + 1,
@@ -80,14 +79,15 @@ elif st.session_state["etapa"] == "export":
     st.divider()
     st.subheader("💾 Exportă Rezultatele")
     
+    # Export CSV sigur
     csv = df.to_csv(index=False).encode('utf-8-sig')
     st.download_button(
-        label="📥 Descarcă CSV/Excel",
+        label="📥 Descarcă Raportul Excel (CSV)",
         data=csv,
-        file_name="Raport_Maria_Nutrifit.csv",
+        file_name="Raport_Final_Maria.csv",
         mime="text/csv"
     )
 
-    if st.button("🔄 Start Nou"):
-        st.session_state["etapa"] = "selectie"
+    if st.button("🔄 Începe o selecție nouă"):
+        st.session_state["ai_executat"] = False
         st.rerun()
