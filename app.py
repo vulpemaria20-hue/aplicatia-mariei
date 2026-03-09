@@ -1,61 +1,77 @@
 import streamlit as st
 import pandas as pd
 
-# 1. Configurare Pagină
-st.set_page_config(page_title="NutriFit Maria", layout="centered", page_icon="🥗")
+# 1. Configurare Pagină (Păstrăm titlul tău original)
+st.set_page_config(page_title="Aplicația Mariei", layout="centered", page_icon="👩‍💻")
 
-# --- INITIALIZARE ---
+# --- CONTROLUL ETAPELOR ---
 if "autentificat" not in st.session_state:
     st.session_state["autentificat"] = False
-if "pas" not in st.session_state:
-    st.session_state["pas"] = "selectie"
+if "pas_meniu" not in st.session_state:
+    st.session_state["pas_meniu"] = "selectie"
 
-# --- LOGARE ---
+# --- PASUL 0: LOGARE ---
 if not st.session_state["autentificat"]:
-    st.title("🥗 NutriFit Maria")
-    parola = st.text_input("Parola:", type="password")
-    if st.button("Intră"):
+    st.title("👩‍💻 Aplicația Mariei")
+    parola = st.text_input("Introdu parola de acces:", type="password")
+    if st.button("Conectare"):
         if parola == "nutrifit2026":
             st.session_state["autentificat"] = True
             st.rerun()
+        else:
+            st.error("Parolă incorectă!")
     st.stop()
 
-# --- INTERFAȚA ---
-st.title("👩‍💻 Aplicația Mariei")
-
-if st.session_state["pas"] == "selectie":
-    st.subheader("Pasul 1: Selectează alimentele (200 opțiuni)")
+# --- PASUL 1: SELECȚIE ALIMENTE ---
+if st.session_state["pas_meniu"] == "selectie":
+    st.title("👩‍💻 Aplicația Mariei")
+    st.info("👋 Bine ai venit! Te rugăm să parcurgi etapele de mai jos.")
+    st.subheader("Pasul 1: Selecție Opțiuni")
     
-    # Lista de 200 de variante
-    optiuni = [f"Aliment NutriFit #{i}" for i in range(1, 201)]
-    alegeri = st.multiselect("Alege produsele:", options=optiuni)
+    # Generăm lista de 200 de opțiuni de alimente
+    optiuni_200 = [f"Aliment/Preparat #{i}" for i in range(1, 201)]
+    alegeri = st.multiselect("Alege din cele 200 de configurații:", options=optiuni_200)
 
     if alegeri:
         st.divider()
-        if st.button("🤖 Agent AI: Generează Meniul"):
-            st.session_state["alimente_alese"] = alegeri
-            st.session_state["pas"] = "final"
+        st.subheader("Pasul 2: Agent AI")
+        if st.button("🤖 Generează Planul pe 7 Zile"):
+            st.session_state["selectie_finala"] = alegeri
+            st.session_state["pas_meniu"] = "raport"
             st.rerun()
     else:
-        st.info("Selectează minim un aliment.")
+        st.warning("Te rugăm să selectezi cel puțin o opțiune pentru a continua.")
 
-elif st.session_state["pas"] == "final":
-    st.success("✅ Meniul pe 7 zile a fost generat!")
-    
+# --- PASUL 2: AFIȘARE MENIU 7 ZILE ---
+elif st.session_state["pas_meniu"] == "raport":
+    st.title("👩‍💻 Aplicația Mariei")
+    st.success("✅ Agentul AI a generat meniul tău săptămânal!")
+
     zile = ["Luni", "Marți", "Miercuri", "Joi", "Vineri", "Sâmbătă", "Duminică"]
-    data = []
-    for i, zi in enumerate(zile):
-        # Repartizăm alimentele pe zile
-        aliment = st.session_state["alimente_alese"][i % len(st.session_state["alimente_alese"])]
-        data.append({"Ziua": zi, "Meniu Recomandat": aliment})
+    selectie = st.session_state["selectie_finala"]
     
-    df = pd.DataFrame(data)
-    st.table(df) # Afișare curată, fără prețuri
+    plan_final = []
+    for i, zi in enumerate(zile):
+        # Alocăm alimentele alese pe rând pentru fiecare zi
+        articol = selectie[i % len(selectie)]
+        plan_final.append({
+            "Ziua": zi,
+            "Aliment Recomandat": articol,
+            "Observații": "Consum conform planului"
+        })
 
-    if st.button("🔄 Crează alt meniu"):
-        st.session_state["pas"] = "selectie"
+    df = pd.DataFrame(plan_final)
+    st.table(df) # Afișăm tabelul clar, fără prețuri sau TVA
+
+    st.divider()
+    csv = df.to_csv(index=False).encode('utf-8-sig')
+    st.download_button("📥 Descarcă Meniul (Excel)", data=csv, file_name="Meniu_7_Zile.csv")
+    
+    if st.button("🔄 Crează un meniu nou"):
+        st.session_state["pas_meniu"] = "selectie"
         st.rerun()
 
+# Buton Logout (Sidebar)
 if st.sidebar.button("Logout"):
     st.session_state["autentificat"] = False
     st.rerun()
