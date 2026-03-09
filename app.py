@@ -6,7 +6,6 @@ import random
 st.set_page_config(page_title="Sistem Expert - Matematica Nutriției", page_icon="⚖️", layout="wide")
 
 # 2. BAZĂ DE DATE EXTINSĂ (Extrase din Pag. 32-107)
-# Kcal per 100g de produs finit conform rețetelor calculate din surse
 db_alimente = {
     "Mic Dejun": {
         "Omletă cu brânză": 156, "Budincă Chia": 105.4, "Brioșe legume": 95, 
@@ -30,8 +29,10 @@ db_alimente = {
     }
 }
 
-# 3. SECURITATE (Pag. 154)
-if "login" not in st.session_state: st.session_state.login = False
+# 3. SECURITATE
+if "login" not in st.session_state: 
+    st.session_state.login = False
+
 if not st.session_state.login:
     st.title("🔐 Acces Protejat")
     parola = st.text_input("Introduceți parola de acces:", type="password")
@@ -39,7 +40,8 @@ if not st.session_state.login:
         if parola == "nutrifit2026":
             st.session_state.login = True
             st.rerun()
-        else: st.error("Parolă incorectă!")
+        else: 
+            st.error("Parolă incorectă!")
     st.stop()
 
 # 4. PARAMETRI CLIENT (Metodologia Vasile Bogdan)
@@ -55,23 +57,25 @@ ic_map = {"Sedentar": 25, "Ușor": 30, "Mediu": 35, "Mare": 40, "Sportiv": 45}
 activitate = st.sidebar.selectbox("Activitate (IC)", list(ic_map.keys()))
 ic = ic_map[activitate]
 
-# REZOLVAREA ERORII: Definim intervalul corect conform Pag. 72 & 150
-deficit = st.sidebar.select_slider("Deficit Caloric (Kcal)", options=)
+# REZOLVARE EROARE: Definim opțiunile pentru deficit (0 - 800 kcal)
+deficit = st.sidebar.select_slider("Deficit Caloric (Kcal)", options=list(range(0, 801, 50)))
 
 # 5. LOGICA MATEMATICĂ (Pag. 11-17)
 # Formula RMB
-if varsta >= 65: # Pag. 50
+if varsta >= 65:
     rmb_f = 0.9 if sex == "Masculin" else 0.8
-else: # Pag. 13
+else:
     rmb_f = 1.0 if sex == "Masculin" else 0.8
 rmb = rmb_f * greutate * 24
 
-# Target Caloric (GA x IC - Deficit)
+# Target Caloric (Greutate * IC - Deficit)
 tnc_mentinere = greutate * ic
 target = tnc_mentinere - deficit
 
 # Protecție Metabolică: Nu sub RMB! (Pag. 13, 150)
-if target < rmb: target = rmb
+if target < rmb: 
+    target = rmb
+    st.sidebar.warning(f"⚠️ Atenție: Targetul a fost limitat la RMB ({rmb:.0f} kcal) pentru a preveni încetinirea metabolismului.")
 
 # Calcul Nutrienți (Pag. 15-17)
 p_gr = greutate * (1.7 if ic >= 35 else 1.2)
@@ -80,32 +84,52 @@ c_gr = (target - (p_gr * 4) - (l_gr * 9)) / 4
 
 # 6. INTERFAȚĂ ȘI AGENT GENERATOR
 st.title(f"⚖️ Plan Nutrițional Matematic: {nume}")
-c1, c2, c3 = st.columns(3)
-c1.metric("Țintă Zilnică", f"{target:.0f} Kcal")
-c2.metric("RMB (Minim)", f"{rmb:.0f} Kcal")
-c3.metric("Proteine", f"{p_gr:.0f} g")
+
+# Afișare KPI
+col1, col2, col3, col4 = st.columns(4)
+col1.metric("Țintă Zilnică", f"{target:.0f} Kcal")
+col2.metric("Proteine", f"{p_gr:.0f} g")
+col3.metric("Lipide", f"{l_gr:.0f} g")
+col4.metric("Carbohidrați", f"{c_gr:.0f} g")
+
+st.markdown("---")
 
 if st.button("🤖 Agent AI: Generează Plan 7 Zile (5 Mese)"):
     zile = ["Luni", "Marți", "Miercuri", "Joi", "Vineri", "Sâmbătă", "Duminică"]
-    # Distribuție calorică: MD(25%), G1(10%), PZ(35%), G2(10%), CN(20%) - Pag. 159
+    # Distribuție calorică: MD(25%), G1(10%), PZ(35%), G2(10%), CN(20%)
     dist = {"Mic Dejun": 0.25, "Gustare 1": 0.10, "Prânz": 0.35, "Gustare 2": 0.10, "Cină": 0.20}
     
     plan_saptamanal = []
+    
     for zi in zile:
         for masa, proc in dist.items():
+            # Selectăm categoria corectă din baza de date
             cat = "Gustări" if "Gustare" in masa else masa
+            
+            # Alegem un aliment aleatoriu din categoria respectivă
             aliment = random.choice(list(db_alimente[cat].keys()))
             kcal_100 = db_alimente[cat][aliment]
             
+            # Calculăm necesarul caloric pentru acea masă și gramajul aferent
             kcal_masa = target * proc
             gramaj = (kcal_masa / kcal_100) * 100
             
             plan_saptamanal.append({
-                "Zi": zi, "Masă": masa, "Aliment": aliment, 
-                "Cantitate": f"{gramaj:.0f}g", "Kcal": int(kcal_masa)
+                "Zi": zi, 
+                "Masă": masa, 
+                "Aliment": aliment, 
+                "Cantitate": f"{gramaj:.0f}g", 
+                "Kcal": int(kcal_masa)
             })
 
+    # Creăm DataFrame-ul și îl afișăm pe zile
     df = pd.DataFrame(plan_saptamanal)
+    
     for zi in zile:
-        with st.expander(f"📅 Meniu {zi}"):
-            st.table(df[df["Zi"] == zi][["Masă", "Aliment", "Cantitate", "Kcal"]])
+        with st.expander(f"📅 Meniu DETALIAT - {zi}"):
+            df_zi = df[df["Zi"] == zi][["Masă", "Aliment", "Cantitate", "Kcal"]]
+            st.table(df_zi)
+            st.info(f"Total Calorii {zi}: {df_zi['Kcal'].sum()} kcal")
+
+else:
+    st.info("Apasă pe butonul de mai sus pentru a genera planul alimentar personalizat.")
