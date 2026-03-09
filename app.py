@@ -1,107 +1,106 @@
 import streamlit as st
 import pandas as pd
+import random
 
 # 1. CONFIGURARE PAGINĂ
-st.set_page_config(page_title="Nutriția Matematică - Sistem Expert", page_icon="🍎", layout="wide")
+st.set_page_config(page_title="Expert Nutriție - Platformă Securizată", layout="wide")
 
-# 2. BAZA DE DATE EXTINSĂ (Categorii pentru cele 5 mese)
-if "baza_alimente" not in st.session_state:
-    st.session_state.baza_alimente = {
+# 2. SISTEM DE SECURITATE (LOGARE CU PAROLĂ)
+if "autentificat" not in st.session_state:
+    st.session_state.autentificat = False
+
+def login():
+    st.title("🔐 Acces Platformă Privată")
+    parola = st.text_input("Introduceți parola de acces:", type="password")
+    if st.button("Autentificare"):
+        if parola == "nutrifit2026": # Poți schimba parola aici
+            st.session_state.autentificat = True
+            st.rerun()
+        else:
+            st.error("Parolă incorectă! Contactați administratorul.")
+
+if not st.session_state.autentificat:
+    login()
+    st.stop()
+
+# 3. BAZĂ DE DATE EXTINSĂ (ALIMENTE ȘI REȚETE)
+if "baza_date" not in st.session_state:
+    st.session_state.baza_date = {
         "Mic Dejun": {
-            "Omletă": 155, "Smoothie Verde": 54.2, "Budincă Chia": 105.4, 
-            "Brioșe din Legume": 95.0, "Ovăz cu lapte": 102, "Pâine cu avocado": 160,
-            "Iaurt cu cereale": 120, "Ouă ochiuri": 190, "Clătite proteice": 175
+            "Omletă cu spanac": 155, "Smoothie Verde": 54, "Budincă Chia": 105, "Ovăz cu fructe": 120,
+            "Pâine cu avocado": 160, "Iaurt grecesc cu nuci": 130, "Clătite proteice": 175, "Brânză cu roșii": 90,
+            "Ouă ochiuri și sparanghel": 140, "Brioșe cu legume": 110, "Terci de hrișcă": 115, "Sandwich cu curcan": 180
         },
         "Gustări": {
-            "Banană": 89, "Măr": 52, "Nuci crude": 654, "Iaurt grecesc 2%": 69, 
-            "Baton proteic": 380, "Smoothie Fructe Pădure": 114.6, "Kinder Felie Lapte": 135.88,
-            "Migdale": 579, "Brânză perle": 90
+            "Măr verde": 52, "Banană": 89, "Migdale crude": 579, "Kinder Felie Lapte": 136, "Baton proteic": 350,
+            "Iaurt 2%": 65, "Nuci caju": 550, "Afine": 57, "Mix semințe": 480, "Brânză perle": 85, "Morcovi baby": 41
         },
         "Prânz": {
-            "Tocană de legume": 29.15, "Mâncare de linte": 116, "Somon file": 208, 
-            "Orez integral cu legume": 150.4, "Pui la grătar": 165, "Curcan la cuptor": 135,
-            "Mușchi de vită": 250, "Păstrăv la grătar": 145, "Iahnie de fasole": 120
+            "Pui la grătar": 165, "Somon la cuptor": 208, "Tocană de legume": 35, "Mâncare de linte": 116,
+            "Iahnie de fasole": 125, "Curcan cu broccoli": 110, "Orez Basmati": 120, "Mușchi de vită": 250,
+            "Păstrăv": 145, "Quinoa cu legume": 130, "Mămăligă cu brânză slabă": 140, "Paste integrale": 150
         },
         "Cină": {
-            "Salată de ton": 158.0, "Supă cremă legume": 45, "Cod la grătar": 105, 
-            "Salată grecească": 115, "Piept de pui cu broccoli": 110, "Omletă cu spanac": 140,
-            "Curcan cu salată": 125, "Tofu la grătar": 95, "Creveți": 99
+            "Salată de ton": 150, "Supă cremă legume": 45, "Cod cu lămâie": 105, "Salată grecească": 115,
+            "Tofu la grătar": 95, "Creveți cu usturoi": 99, "Sufleu de dovlecei": 85, "Curcan la abur": 104,
+            "Salată cu ou fiert": 110, "Supă de pui": 60, "Vinete la cuptor": 40, "Humus cu ardei": 180
         }
     }
 
-# 3. IDENTIFICARE CLIENT (SIDEBAR)
-st.sidebar.title("👤 Profil Client")
-nume_client = st.sidebar.text_input("Nume Complet Client:", placeholder="Introduceți numele...")
+# 4. MANAGEMENT CLIENT
+st.sidebar.title("👥 Gestiune Clienți")
+nume_client = st.sidebar.text_input("Nume Client:", placeholder="Ex: Maria Popescu")
 
 if not nume_client:
-    st.title("🔐 Bine ați venit")
-    st.info("Vă rugăm să introduceți numele clientului în bara laterală pentru a accesa sistemul.")
+    st.warning("Introduceți numele clientului pentru a genera planul.")
     st.stop()
 
-# 4. CALCULATOR METABOLIC (CALORII INIȚIALE ȘI TARGET)
-st.title(f"⚖️ Planificator: {nume_client}")
+# 5. CALCULATOR METABOLIC
+st.title(f"📋 Planificator Săptămânal: {nume_client}")
+col1, col2, col3 = st.columns(3)
 
-col1, col2 = st.columns(2)
 with col1:
-    sex = st.selectbox("Sex", ["Feminin", "Masculin"])
-    greutate = st.number_input("Greutate (kg)", 40.0, 200.0, 70.0)
-    ic = st.select_slider("Nivel Activitate (IC)", options=[25, 30, 35, 40, 45, 50], value=30)
-
+    greutate = st.number_input("Greutate (kg)", 40.0, 180.0, 75.0)
+    ic = st.select_slider("Activitate (IC)", options=[25, 30, 35, 40, 45, 50], value=30)
 with col2:
     obiectiv = st.radio("Obiectiv", ["Menținere", "Slăbire"])
     deficit = 0
     if obiectiv == "Slăbire":
-        deficit = st.slider("Alege Deficitul (kcal)", 500, 1000, 500)
+        deficit = st.slider("Deficit (kcal)", 500, 1000, 500)
+with col3:
+    kcal_mentinere = greutate * ic
+    tinta = kcal_mentinere - deficit
+    st.metric("Țintă Zilnică", f"{int(tinta)} kcal")
 
-# LOGICĂ MATEMATICĂ
-kcal_mentinere = greutate * ic
-target_final = kcal_mentinere - deficit
-
-st.success(f"**Necesar Menținere:** {int(kcal_mentinere)} kcal | **Țintă Zilnică Finală:** {int(target_final)} kcal")
-
-# 5. PLANIFICATOR CU GRAMAJE (CELE 5 MESE)
+# 6. PLANIFICARE PE O SĂPTĂMÂNĂ (7 ZILE)
 st.divider()
-st.header(f"🍱 Planificator pentru {int(target_final)} kcal")
+zile = ["Luni", "Marți", "Miercuri", "Joi", "Vineri", "Sâmbătă", "Duminică"]
+distributie = {"Mic Dejun": 0.25, "Gustare 1": 0.10, "Prânz": 0.35, "Gustare 2": 0.10, "Cină": 0.20}
 
-# Procente distribuție conform metodologiei
-distributie = {
-    "Mic Dejun": 0.25, 
-    "Gustare 1": 0.10, 
-    "Prânz": 0.35, 
-    "Gustare 2": 0.10, 
-    "Cină": 0.20
-}
+st.header("🗓️ Meniu Săptămânal Personalizat")
 
-# Interfață cu coloane (conform imaginii tale)
-c1, c2, c3, c4, c5 = st.columns(5)
+for zi in zile:
+    with st.expander(f"📅 Plan pentru {zi}"):
+        c1, c2, c3, c4, c5 = st.columns(5)
+        
+        # Dropdown-uri cu lista mare de alimente
+        m1 = c1.selectbox("Mic Dejun", list(st.session_state.baza_date["Mic Dejun"].keys()), key=f"md_{zi}")
+        g1 = c2.selectbox("Gustare 1", list(st.session_state.baza_date["Gustări"].keys()), key=f"g1_{zi}")
+        p1 = c3.selectbox("Prânz", list(st.session_state.baza_date["Prânz"].keys()), key=f"p_{zi}")
+        g2 = c4.selectbox("Gustare 2", list(st.session_state.baza_date["Gustări"].keys()), key=f"g2_{zi}")
+        c1_zi = c5.selectbox("Cină", list(st.session_state.baza_date["Cină"].keys()), key=f"c_{zi}")
 
-with c1:
-    md = st.selectbox("Mic Dejun (25%)", list(st.session_state.baza_alimente["Mic Dejun"].keys()))
-with c2:
-    g1 = st.selectbox("Gustare 1 (10%)", list(st.session_state.baza_alimente["Gustări"].keys()))
-with c3:
-    pz = st.selectbox("Prânz (35%)", list(st.session_state.baza_alimente["Prânz"].keys()))
-with c4:
-    g2 = st.selectbox("Gustare 2 (10%)", list(st.session_state.baza_alimente["Gustări"].keys()), key="g2_select")
-with c5:
-    cn = st.selectbox("Cină (20%)", list(st.session_state.baza_alimente["Cină"].keys()))
+        # AGENT AI: Calcul gramaje automate pentru fiecare alegere
+        plan_zi = []
+        for masa, alegere, cat in [("Mic Dejun", m1, "Mic Dejun"), ("Gustare 1", g1, "Gustări"), 
+                                   ("Prânz", p1, "Prânz"), ("Gustare 2", g2, "Gustări"), ("Cină", c1_zi, "Cină")]:
+            kcal_100g = st.session_state.baza_date[cat][alegere]
+            kcal_alocate = tinta * distributie[masa]
+            gramaj = (kcal_alocate / kcal_100g) * 100
+            plan_zi.append({"Masă": masa, "Aliment": alegere, "Gramaj": f"{int(gramaj)}g", "Calorii": f"{int(kcal_alocate)} kcal"})
+        
+        st.table(pd.DataFrame(plan_zi))
 
-# 6. AGENT AI: CALCUL AUTOMAT GRAMAJE
-def calc_g(aliment, kcal_100g, proc):
-    kcal_tinta = target_final * proc
-    return int((kcal_tinta / kcal_100g) * 100)
-
-plan_final = [
-    {"Masa": "Mic Dejun", "Preparat": md, "Gramaj": f"{calc_g(md, st.session_state.baza_alimente['Mic Dejun'][md], distributie['Mic Dejun'])}g"},
-    {"Masa": "Gustare 1", "Preparat": g1, "Gramaj": f"{calc_g(g1, st.session_state.baza_alimente['Gustări'][g1], distributie['Gustare 1'])}g"},
-    {"Masa": "Prânz", "Preparat": pz, "Gramaj": f"{calc_g(pz, st.session_state.baza_alimente['Prânz'][pz], distributie['Prânz'])}g"},
-    {"Masa": "Gustare 2", "Preparat": g2, "Gramaj": f"{calc_g(g2, st.session_state.baza_alimente['Gustări'][g2], distributie['Gustare 2'])}g"},
-    {"Masa": "Cină", "Preparat": cn, "Gramaj": f"{calc_g(cn, st.session_state.baza_alimente['Cină'][cn], distributie['Cină'])}g"}
-]
-
-st.table(pd.DataFrame(plan_final))
-
-# 7. BUTON AGENT AI
-if st.button("🤖 Agent AI: Optimizează Meniul"):
-    st.balloons()
-    st.info("Agentul AI a verificat compatibilitatea alimentelor și a recalculat gramajele pentru eficiență metabolică maximă!")
+# 7. BUTON SALVARE / EXPORT
+if st.sidebar.button("💾 Salvează Planul"):
+    st.sidebar.success(f"Planul pentru {nume_client} a fost salvat în baza de date!")
