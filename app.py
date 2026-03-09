@@ -14,7 +14,7 @@ if not st.session_state.login:
     if st.button("Autentificare"):
         if parola_introdusa == "nutrifit2026":
             st.session_state.login = True
-            st.experimental_rerun()
+            st.rerun()  # Corect pentru versiunile noi Streamlit
         else:
             st.error("Parolă incorectă!")
     st.stop()
@@ -34,7 +34,7 @@ baza_alimente = {
     "Smoothie Verde": 54.2, "Smoothie Fructe Pădure": 114.6, "Smoothie Mango & Cătină": 94.2,
     "Kinder Felie de Lapte": 135.88, "Brioșe Spanac & Banană": 247.46, "Budincă Chia": 105.4,
     "Brioșe din Legume": 95.0, "Somon file": 208.0, "Iaurt grecesc 2%": 69.0, "Banana": 89.0,
-    "Cod la grătar": 150.0  # am adăugat pentru cină
+    "Cod la grătar": 150.0
 }
 
 # 5. FUNCȚII DE CALCUL
@@ -70,7 +70,6 @@ with tab1:
                 "Sedentar (25-30 kcal/kg)", "Ușor (30-35 kcal/kg)", 
                 "Mediu (35-40 kcal/kg)", "Mare (40-45 kcal/kg)"
             ])
-            # Extrage valoarea medie din intervalul kcal/kg
             ic_text = activitate.split("(")[1].split(" ")[0]  # "25-30"
             ic_min, ic_max = map(int, ic_text.split("-"))
             ic = (ic_min + ic_max) / 2
