@@ -4,91 +4,79 @@ import pandas as pd
 # 1. Configurare Pagină
 st.set_page_config(page_title="Aplicația Mariei", layout="centered", page_icon="👩‍💻")
 
-# --- INITIALIZARE STRICTA ---
+# --- SISTEM DE CONTROL ---
 if "autentificat" not in st.session_state:
     st.session_state["autentificat"] = False
-if "pas_curent" not in st.session_state:
-    st.session_state["pas_curent"] = "login"
+if "pagina" not in st.session_state:
+    st.session_state["pagina"] = "login"
 
-# --- LOGICA DE LOGARE (ECRAN IZOLAT) ---
+# --- ECRAN 0: LOGIN ---
 if not st.session_state["autentificat"]:
     st.markdown("# 👩‍💻 Aplicația Mariei")
     st.subheader("🔐 Introducere Parolă")
-    
-    parola_introdusa = st.text_input("Introdu parola de acces:", type="password", key="login_pass")
-    
-    if st.button("Verifică Parola", key="btn_login"):
-        if parola_introdusa == "nutrifit2026":
+    parola = st.text_input("Parola de acces:", type="password", key="pwd")
+    if st.button("Autentificare", key="login_btn"):
+        if parola == "nutrifit2026":
             st.session_state["autentificat"] = True
-            st.session_state["pas_curent"] = "selectie"
+            st.session_state["pagina"] = "selectie"
             st.rerun()
         else:
             st.error("❌ Parolă incorectă!")
-    st.stop() # GARANTEAZA că nimic de mai jos nu apare pe ecran
+    st.stop()
 
-# --- DACĂ EȘTI AICI, EȘTI AUTENTIFICAT ---
-
-# Meniu de Logout în Sidebar
-if st.sidebar.button("Ieșire (Logout)"):
-    for key in st.session_state.keys():
-        del st.session_state[key]
-    st.rerun()
-
-# --- PASUL 1: SELECȚIE (ECRAN IZOLAT) ---
-if st.session_state["pas_curent"] == "selectie":
+# --- ECRAN 1: SELECȚIE ---
+if st.session_state["pagina"] == "selectie":
     st.markdown("# 👩‍💻 Aplicația Mariei")
     st.info("👋 Bine ai venit! Te rugăm să parcurgi etapele de mai jos.")
     st.markdown("### 📝 Pasul 1: Selecție Opțiuni")
     
-    optiuni_200 = [f"Serviciu NutriFit #{i}" for i in range(1, 201)]
-    selectie = st.multiselect("Alege serviciile dorite:", options=optiuni_200, key="multi_select")
+    # Generăm lista de 200 opțiuni solicitată
+    optiuni = [f"Serviciu NutriFit #{i}" for i in range(1, 201)]
+    alegeri = st.multiselect("Alege configurațiile:", options=optiuni, key="main_select")
 
-    if selectie:
-        st.session_state["date_alese"] = selectie
+    if alegeri:
         st.divider()
-        st.markdown("### 🤖 Pasul 2: Activare Agent AI")
-        if st.button("Procesează cu Agentul AI", key="btn_ai"):
-            st.session_state["pas_curent"] = "tabel"
+        st.markdown("### 🤖 Pasul 2: Agent AI")
+        if st.button("🚀 Procesează datele cu AI", key="process_btn"):
+            st.session_state["final_data"] = alegeri
+            st.session_state["pagina"] = "raport"
             st.rerun()
     else:
-        st.warning("Te rugăm să selectezi cel puțin o opțiune.")
+        st.warning("Te rugăm să selectezi cel puțin o opțiune pentru a continua.")
 
-# --- PASUL 2: TABEL ȘI EXPORT (ECRAN IZOLAT) ---
-elif st.session_state["pas_curent"] == "tabel":
+# --- ECRAN 2: RAPORT FINAL ---
+elif st.session_state["pagina"] == "raport":
     st.markdown("# 👩‍💻 Aplicația Mariei")
-    st.success(f"✅ Agentul AI a finalizat procesarea pentru {len(st.session_state['date_alese'])} elemente!")
+    st.success(f"✅ Agentul AI a procesat {len(st.session_state['final_data'])} elemente!")
     
     st.subheader("📊 Previzualizare Tabel Final")
     
-    # Construim tabelul cerut în imaginea ta
-    date_tabel = []
-    for idx, item in enumerate(st.session_state["date_alese"]):
-        p = 150.0
-        date_tabel.append({
+    # Recreăm tabelul exact ca în imaginea ta originală
+    tabel_list = []
+    for idx, item in enumerate(st.session_state["final_data"]):
+        pret = 150.0
+        tabel_list.append({
             "ID": idx + 1,
             "Descriere": item,
             "Cantitate": 1,
-            "Pret Unitar (RON)": p,
-            "Total Fara TVA": p,
-            "TVA (19%)": p * 0.19,
-            "Total de Plata": p * 1.19
+            "Pret Unitar": pret,
+            "TVA (19%)": pret * 0.19,
+            "Total": pret * 1.19
         })
     
-    df = pd.DataFrame(date_tabel)
+    df = pd.DataFrame(tabel_list)
     st.dataframe(df, use_container_width=True)
 
     st.divider()
-    st.subheader("💾 Export")
-    
     csv = df.to_csv(index=False).encode('utf-8-sig')
-    st.download_button(
-        label="📥 Descarcă Raportul Excel",
-        data=csv,
-        file_name="Raport_Maria.csv",
-        mime="text/csv",
-        key="btn_download"
-    )
-
+    st.download_button("📥 Descarcă Raportul", data=csv, file_name="Raport_Maria.csv", mime="text/csv")
+    
     if st.button("🔄 Începe o selecție nouă"):
-        st.session_state["pas_curent"] = "selectie"
+        st.session_state["pagina"] = "selectie"
         st.rerun()
+
+# Logout în Sidebar
+if st.sidebar.button("Logout"):
+    st.session_state["autentificat"] = False
+    st.session_state["pagina"] = "login"
+    st.rerun()
