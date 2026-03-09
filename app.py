@@ -3,9 +3,31 @@ import pandas as pd
 import random
 import io
 
+# CONFIG PAGINA
 st.set_page_config(page_title="Sistem Expert Nutriție", page_icon="⚖️", layout="wide")
 
-# BAZĂ DATE ALIMENTE
+# LOGIN
+if "login" not in st.session_state:
+    st.session_state.login = False
+
+if not st.session_state.login:
+
+    st.title("🔐 Acces aplicație")
+
+    parola = st.text_input("Introduceți parola:", type="password")
+
+    if st.button("Autentificare"):
+
+        if parola == "nutrifit2026":
+            st.session_state.login = True
+            st.rerun()
+        else:
+            st.error("Parolă incorectă!")
+
+    st.stop()
+
+
+# BAZA DE DATE ALIMENTE
 db_alimente = {
 
 "Mic Dejun": {
@@ -14,135 +36,152 @@ db_alimente = {
 "Brioșe legume":95,
 "Humus clasic":230.9,
 "Ouă fierte":155,
-"Pâine integrală":223.3
+"Pâine integrală":223.3,
+"Cremă urdă mărar":137,
+"Zacuscă vinete":92
 },
 
 "Gustări":{
 "Smoothie Verde":54.2,
 "Măr verde":52,
 "Banana":89,
-"Iaurt grecesc":69,
+"Iaurt grecesc 2%":69,
 "Migdale":575,
-"Nuci":654
+"Nuci":654,
+"Grapefruit":32,
+"Căpșuni":32
 },
 
 "Prânz":{
 "Tocană de legume":29.15,
 "Mâncare de linte":188.41,
 "Orez integral legume":150.4,
-"Piept curcan":107,
-"Somon":208,
-"Supă pui":24.14
+"Piept curcan grătar":107,
+"Somon file":208,
+"Rasol vită":133,
+"Supă pui":24.14,
+"Iahnie fasole":154.1,
+"Mămăligă":66
 },
 
 "Cină":{
-"Salată ton":158,
+"Salată ton avocado":158,
 "Cod la grătar":107,
 "Supă cremă conopidă":86.8,
-"Creveți":85,
-"Zucchini":17,
-"Paste integrale":340
+"Creveți rucola":85,
+"Zucchini grătar":17,
+"Paste integrale":340,
+"Salată pui crudități":110,
+"Piure mazăre":84
 }
 
 }
 
-# LOGIN
-if "login" not in st.session_state:
-    st.session_state.login=False
 
-if not st.session_state.login:
+# SIDEBAR PROFIL CLIENT
+st.sidebar.header("👤 Profil Client")
 
-    st.title("🔐 Acces aplicație")
+nume = st.sidebar.text_input("Nume Client","Maria")
 
-    parola=st.text_input("Parolă",type="password")
+greutate = st.sidebar.number_input("Greutate (kg)",40,200,70)
 
-    if st.button("Autentificare"):
+inaltime = st.sidebar.number_input("Înălțime (cm)",130,220,170)
 
-        if parola=="nutrifit2026":
-            st.session_state.login=True
-            st.rerun()
-        else:
-            st.error("Parolă incorectă")
+varsta = st.sidebar.number_input("Vârstă",18,95,35)
 
-    st.stop()
+sex = st.sidebar.radio("Sex",["Masculin","Feminin"])
 
 
-# PROFIL CLIENT
+# INDICE ACTIVITATE
+ic_map={
+"Sedentar":25,
+"Ușor":30,
+"Mediu":35,
+"Mare":40,
+"Sportiv":45
+}
 
-st.sidebar.header("Profil Client")
-
-nume=st.sidebar.text_input("Nume","Maria")
-greutate=st.sidebar.number_input("Greutate",40,200,70)
-inaltime=st.sidebar.number_input("Înălțime",130,220,170)
-varsta=st.sidebar.number_input("Vârstă",18,95,35)
-sex=st.sidebar.radio("Sex",["Masculin","Feminin"])
-
-ic_map={"Sedentar":25,"Ușor":30,"Mediu":35,"Mare":40,"Sportiv":45}
-
-activitate=st.sidebar.selectbox("Activitate",list(ic_map.keys()))
+activitate=st.sidebar.selectbox("Activitate (IC)",list(ic_map.keys()))
 
 ic=ic_map[activitate]
 
-deficit=st.sidebar.slider("Deficit caloric",0,800,300,50)
 
-variante=st.sidebar.slider("Variante meniu/zi",1,4,2)
+# DEFICIT
+deficit = st.sidebar.slider("Deficit caloric",0,800,300,50)
 
-# CALCULURI (FORMULELE TALE)
+# VARIANTE MENIU
+variante = st.sidebar.slider("Variante meniu / zi",1,4,2)
 
-if varsta>=65:
-    rmb_f=0.9 if sex=="Masculin" else 0.8
+
+# CALCULURI METABOLICE (FORMULELE TALE)
+
+if varsta >= 65:
+    rmb_f = 0.9 if sex == "Masculin" else 0.8
 else:
-    rmb_f=1.0 if sex=="Masculin" else 0.8
+    rmb_f = 1.0 if sex == "Masculin" else 0.8
 
-rmb=rmb_f*greutate*24
+rmb = rmb_f * greutate * 24
 
-tnc=greutate*ic
+tnc_mentinere = greutate * ic
 
-target=tnc-deficit
+target = tnc_mentinere - deficit
 
-if target<rmb:
-    target=rmb
-    st.sidebar.warning("Target limitat la RMB")
 
-# MACRONUTRIENȚI
+# PROTECTIE METABOLICA
+if target < rmb:
+    target = rmb
+    st.sidebar.warning(f"⚠️ Target limitat la RMB ({rmb:.0f} kcal)")
 
-p_gr=greutate*(1.7 if ic>=35 else 1.2)
-l_gr=greutate*(1.0 if ic>=35 else 0.8)
 
-c_gr=(target-(p_gr*4)-(l_gr*9))/4
+# MACRONUTRIENTI
+p_gr = greutate * (1.7 if ic >= 35 else 1.2)
+
+l_gr = greutate * (1.0 if ic >= 35 else 0.8)
+
+c_gr = (target - (p_gr * 4) - (l_gr * 9)) / 4
+
+
+# TITLU
+st.title(f"⚖️ Plan Nutrițional Matematic: {nume}")
 
 
 # KPI
+col1,col2,col3,col4 = st.columns(4)
 
-st.title(f"Plan Nutrițional: {nume}")
+col1.metric("Țintă calorică",f"{target:.0f} kcal")
 
-c1,c2,c3,c4=st.columns(4)
+col2.metric("Proteine",f"{p_gr:.0f} g")
 
-c1.metric("Target kcal",round(target))
-c2.metric("Proteine g",round(p_gr))
-c3.metric("Lipide g",round(l_gr))
-c4.metric("Carbo g",round(c_gr))
+col3.metric("Lipide",f"{l_gr:.0f} g")
+
+col4.metric("Carbohidrați",f"{c_gr:.0f} g")
+
+
+st.divider()
 
 
 # GRAFIC MACRO
+chart = pd.DataFrame({
 
-chart=pd.DataFrame({
-"Macro":["Proteine","Lipide","Carbo"],
-"g":[p_gr,l_gr,c_gr]
+"Macro":["Proteine","Lipide","Carbohidrați"],
+
+"Grame":[p_gr,l_gr,c_gr]
+
 })
 
 st.bar_chart(chart.set_index("Macro"))
+
 
 st.divider()
 
 
 # GENERATOR PLAN
 
-if st.button("Generează plan 7 zile"):
+if st.button("🤖 Generează plan alimentar 7 zile"):
 
     zile=["Luni","Marți","Miercuri","Joi","Vineri","Sâmbătă","Duminică"]
 
-    dist={
+    distributie={
     "Mic Dejun":0.25,
     "Gustare 1":0.10,
     "Prânz":0.35,
@@ -151,13 +190,15 @@ if st.button("Generează plan 7 zile"):
     }
 
     plan=[]
+
     istoric=set()
+
 
     for zi in zile:
 
         for v in range(1,variante+1):
 
-            for masa,proc in dist.items():
+            for masa,proc in distributie.items():
 
                 cat="Gustări" if "Gustare" in masa else masa
 
@@ -172,11 +213,12 @@ if st.button("Generează plan 7 zile"):
 
                 istoric.add(aliment)
 
-                kcal100=db_alimente[cat][aliment]
+                kcal_100=db_alimente[cat][aliment]
 
                 kcal_masa=target*proc
 
-                gramaj=(kcal_masa/kcal100)*100
+                gramaj=(kcal_masa/kcal_100)*100
+
 
                 plan.append({
 
@@ -192,9 +234,11 @@ if st.button("Generează plan 7 zile"):
 
     df=pd.DataFrame(plan)
 
+
+    # AFISARE MENIU
     for zi in zile:
 
-        with st.expander(zi):
+        with st.expander(f"📅 {zi}"):
 
             df_zi=df[df["Zi"]==zi]
 
@@ -206,18 +250,18 @@ if st.button("Generează plan 7 zile"):
 
                 st.table(df_v[["Masă","Aliment","Cantitate g","Kcal"]])
 
-                st.info(f"Total kcal: {df_v['Kcal'].sum()}")
+                st.info(f"Total calorii: {df_v['Kcal'].sum()} kcal")
 
 
-# RAPORT EXCEL
+    # GENERARE RAPORT EXCEL
 
-    buffer=io.BytesIO()
+    buffer = io.BytesIO()
 
-    with pd.ExcelWriter(buffer,engine="xlsxwriter") as writer:
+    with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
 
-        df.to_excel(writer,sheet_name="Plan Saptamanal",index=False)
+        df.to_excel(writer, sheet_name="Plan Saptamanal", index=False)
 
-        profil=pd.DataFrame({
+        profil = pd.DataFrame({
 
         "Parametru":[
         "Client",
@@ -241,13 +285,25 @@ if st.button("Generează plan 7 zile"):
 
         })
 
-        profil.to_excel(writer,sheet_name="Profil",index=False)
+        profil.to_excel(writer, sheet_name="Profil Client", index=False)
+
 
     buffer.seek(0)
 
+
     st.download_button(
-    "Descarcă raport Excel",
-    buffer,
+
+    label="📥 Descarcă raport nutrițional Excel",
+
+    data=buffer,
+
     file_name=f"plan_nutritie_{nume}.xlsx",
-    mime="application/vnd.ms-excel"
+
+    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
     )
+
+
+else:
+
+    st.info("Apasă pe buton pentru a genera planul alimentar.")
