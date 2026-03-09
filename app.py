@@ -4,92 +4,85 @@ import pandas as pd
 # 1. Configurare Pagină
 st.set_page_config(page_title="Aplicația Mariei", layout="centered", page_icon="👩‍💻")
 
-# --- SISTEM DE SECURITATE ---
-# Verificăm dacă utilizatorul este autentificat. Dacă nu, oprim restul codului.
+# --- GESTIONARE SESIUNE ---
 if "autentificat" not in st.session_state:
     st.session_state["autentificat"] = False
+if "ai_gata" not in st.session_state:
+    st.session_state["ai_gata"] = False
 
+# --- BLOCARE ACCES (LOGIN) ---
 if not st.session_state["autentificat"]:
     st.markdown("# 👩‍💻 Aplicația Mariei")
     st.subheader("🔐 Introducere Parolă")
-    
-    parola = st.text_input("Introdu parola de acces pentru a continua:", type="password")
-    
-    if st.button("Verifică Parola"):
+    parola = st.text_input("Parola de acces:", type="password")
+    if st.button("Verifică"):
         if parola == "nutrifit2026":
             st.session_state["autentificat"] = True
-            st.rerun() # Reîncărcăm pagina pentru a afișa conținutul
+            st.rerun()
         else:
-            st.error("❌ Parolă incorectă! Te rugăm să încerci din nou.")
-    
-    # st.stop() este ESENȚIAL: nu lasă nimic de mai jos să se încarce până la login
-    st.stop()
+            st.error("Parolă incorectă!")
+    st.stop() # Nu lasă restul codului să ruleze
 
-# --- DACĂ AM AJUNS AICI, PAROLA ESTE CORECTĂ ---
+# --- DACĂ EȘTI AICI, EȘTI LOGAT ---
 
-# Inițializăm starea pentru Agentul AI
-if "ai_procesat" not in st.session_state:
-    st.session_state["ai_procesat"] = False
-
-# Buton de logout în sidebar
+# Buton Logout în lateral
 if st.sidebar.button("Ieșire (Logout)"):
     st.session_state["autentificat"] = False
-    st.session_state["ai_procesat"] = False
+    st.session_state["ai_gata"] = False
     st.rerun()
 
 st.markdown("# 👩‍💻 Aplicația Mariei")
 
-# LOGICA FLUXULUI: SELECȚIE -> AGENT AI -> EXPORT
-if not st.session_state["ai_procesat"]:
+# LOGICA PE ETAPE
+if not st.session_state["ai_gata"]:
+    # PASUL 1: SELECȚIE
     st.info("👋 Bine ai venit! Te rugăm să parcurgi etapele de mai jos.")
-    
     st.markdown("### 📝 Pasul 1: Selecție Opțiuni")
-    st.write("Alege serviciile dorite din lista de 200 de configurații disponibile:")
+    st.write("Alege serviciile dorite din lista de 200 de configurații:")
 
-    # Generăm lista de 200 opțiuni
-    optiuni_200 = [f"Opțiunea {i}: Configurație NutriFit" for i in range(1, 201)]
+    optiuni_200 = [f"Serviciu NutriFit #{i}" for i in range(1, 201)]
     selectie = st.multiselect("Selectează opțiunile:", options=optiuni_200)
 
     if selectie:
         st.divider()
         st.markdown("### 🤖 Pasul 2: Activare Agent AI")
-        st.write("Acum poți procesa selecția ta cu ajutorul Agentului AI.")
-        
-        if st.button("Procesează datele cu Agentul AI"):
-            st.session_state["selectie_finala"] = selectie
-            st.session_state["ai_procesat"] = True
+        if st.button("Procesează selecția cu Agentul AI"):
+            st.session_state["rezultate"] = selectie
+            st.session_state["ai_gata"] = True
             st.rerun()
     else:
         st.warning("Te rugăm să selectezi cel puțin o opțiune pentru a continua.")
 
 else:
-    # --- AFIȘARE REZULTATE FINALE ---
-    st.success(f"✅ Agentul AI a finalizat procesarea pentru cele {len(st.session_state['selectie_finala'])} elemente!")
+    # PASUL FINAL: RAPORTUL DIN PRIMA IMAGINE
+    st.success("✅ Agentul AI a finalizat procesarea!")
     
-    st.subheader("📊 Previzualizare Tabel Final")
+    st.subheader("📊 Previzualizare Tabel")
     
-    # Creăm tabelul conform datelor tale
-    date_tabel = []
-    for item in st.session_state["selectie_finala"]:
-        pret_baza = 150.0
-        date_tabel.append({
+    # Construim tabelul exact ca în imaginea ta
+    rows = []
+    for idx, item in enumerate(st.session_state["rezultate"]):
+        pret = 150.0  # Exemplu
+        rows.append({
+            "ID": idx + 1,
             "Descriere": item,
             "Cantitate": 1,
-            "Pret Unitar (RON)": pret_baza,
-            "Total Fara TVA": pret_baza,
-            "TVA (19%)": pret_baza * 0.19,
-            "Total de Plata": pret_baza * 1.19
+            "Pret Unitar (RON)": pret,
+            "Total Fara TVA": pret,
+            "TVA (19%)": pret * 0.19,
+            "Total de Plata": pret * 1.19
         })
     
-    df = pd.DataFrame(date_tabel)
+    df = pd.DataFrame(rows)
     st.dataframe(df, use_container_width=True)
 
     st.divider()
+    
+    # EXPORTUL
     st.subheader("💾 Exportă Rezultatele")
+    nume_fisier = st.text_input("Numele fișierului:", value="Raport_Maria")
     
-    nume_fisier = st.text_input("Numele fișierului:", value="Raport_Final_Maria")
-    
-    # Export CSV (cel mai sigur format pentru Excel fără erori de motor)
+    # Export CSV sigur (fără biblioteci care crapă)
     csv = df.to_csv(index=False).encode('utf-8-sig')
 
     st.download_button(
@@ -100,5 +93,5 @@ else:
     )
 
     if st.button("🔄 Începe o selecție nouă"):
-        st.session_state["ai_procesat"] = False
+        st.session_state["ai_gata"] = False
         st.rerun()
