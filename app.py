@@ -19,15 +19,14 @@ if not st.session_state.login:
             st.error("Parolă incorectă!")
     st.stop()
 
-# 3. GESTIONARE CLIENȚI (Permite lucrul cu mai mulți utilizatori)
+# 3. GESTIONARE CLIENȚI
 st.sidebar.title("👥 Gestiune Clienți")
 nume_client = st.sidebar.text_input("Nume Client curent:", placeholder="Ex: Maria Ionescu")
-
 if not nume_client:
     st.info("Introduceți numele clientului în bara laterală pentru a începe.")
     st.stop()
 
-# 4. BAZA DE DATE REȚETE (Kcal/100g extrase din Pag. 32-107)
+# 4. BAZA DE DATE REȚETE
 baza_alimente = {
     "Tocană de legume": 29.15, "Mâncare de linte": 188.41, "Humus": 230.9,
     "Orez integral cu legume": 150.4, "Salată de ton": 158.0, "Omletă": 155.0,
@@ -36,15 +35,21 @@ baza_alimente = {
     "Somon file": 208.0, "Iaurt grecesc 2%": 69.0, "Banana": 89.0, "Pâine integrală": 223.3
 }
 
-# 5. FUNCȚII DE CALCUL (Metodologia originală din manual)
+# 5. FUNCȚII DE CALCUL
 def calcul_rmb(greutate, sex, varsta):
     factor = (0.9 if sex == "Masculin" else 0.8) if varsta >= 65 else (1.0 if sex == "Masculin" else 0.8)
-    return factor * greutate * 24 # Pag. 12 & 50
+    return factor * greutate * 24
 
 # --- INTERFAȚA PRINCIPALĂ ---
 st.title(f"⚖️ Plan Nutrițional: {nume_client}")
+
+# Inițializăm target în session_state ca să fie disponibil între taburi
+if "target" not in st.session_state:
+    st.session_state.target = None
+
 tab1, tab2, tab3 = st.tabs(["📊 Calculator & IMC", "🔍 Evaluare Evoluție", "🍱 Plan Alimentar"])
 
+# --- TAB 1: Calculator ---
 with tab1:
     col1, col2 = st.columns(2)
     with col1:
@@ -56,15 +61,14 @@ with tab1:
     
     with col2:
         if tip == "Copil/Adolescent":
-            # Necesar caloric fix copii (Pag. 25)
             if varsta < 7: tnc = 1400
             elif varsta < 10: tnc = 1800
             elif varsta < 14: tnc = 2500 if sex == "Masculin" else 2250
             else: tnc = 3250 if sex == "Masculin" else 2400
         else:
             activitate = st.selectbox("Activitate (IC)", ["Sedentar (25)", "Ușor (30)", "Mediu (35)", "Mare (40)"])
-            ic = int(activitate.split("(")[2].split(")"))
-            tnc = greutate * ic # Formula GA x IC (Pag. 8)
+            ic = int(activitate.split("(")[1].split(")")[0])
+            tnc = greutate * ic
 
         obiectiv = st.radio("Obiectiv", ["Menținere", "Scădere", "Creștere"])
         target = tnc
@@ -78,10 +82,16 @@ with tab1:
         st.metric("Target Zilnic", f"{target:.0f} kcal")
         st.info(f"BMI actual: {bmi:.1f}")
         if target < rmb: st.warning(f"Atenție: Target sub RMB ({rmb:.0f} kcal)!")
+        # Salvăm target în session_state
+        st.session_state.target = target
 
+# --- TAB 3: Plan Alimentar ---
 with tab3:
     st.subheader("Configurare Meniu")
     md = st.selectbox("Alege Mic Dejun", ["Omletă", "Smoothie Verde", "Budincă Chia"])
-    # Calcul gramaj automat conform Pag. 117
-    g_md = (target * 0.25 / baza_alimente[md]) * 100
-    st.success(f"Pentru Mic Dejun consumați: **{g_md:.0f} g** de {md}")
+    
+    if st.session_state.target is not None:
+        g_md = (st.session_state.target * 0.25 / baza_alimente[md]) * 100
+        st.success(f"Pentru Mic Dejun consumați: **{g_md:.0f} g** de {md}")
+    else:
+        st.info("Apăsați mai întâi 'Generează Analiză' în tabul Calculator & IMC pentru a calcula gramajul.")
