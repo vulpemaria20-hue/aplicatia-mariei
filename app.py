@@ -3,106 +3,120 @@ import pandas as pd
 import random
 
 # 1. CONFIGURARE PAGINĂ
-st.set_page_config(page_title="Matematica Nutriției - Sistem Expert", page_icon="⚖️", layout="wide")
+st.set_page_config(page_title="Sistem Expert - Matematica Nutriției", page_icon="⚖️", layout="wide")
 
-# 2. BAZA DE DATE EXTINSĂ (Extrase din Pag. 32-107)
-# Structură: "Nume": [kcal, P, L, G] per 100g
-db = {
-    "Mic Dejun": {
-        "Omletă simplă": [155, 12.6, 10.6, 1.1], "Budincă Chia Zmeură": [105.4, 4.22, 6.69, 10.52],
-        "Brioșe legume": [95, 10.2, 3.4, 5.5], "Cremă urdă mărar": [7-10],
-        "Humus clasic": [230.9, 8.07, 15.16, 19.09], "Ou fiert": [155, 13, 11, 1.1],
-        "Fulgi de secară": [11-13], "Pâine integrală": [223.3, 13, 1.7, 39]
-    },
-    "Gustări": {
-        "Smoothie Verde": [54.2, 1.6, 0.08, 10.08], "Kinder Felie Lapte": [135.88, 13, 6.25, 6.5],
-        "Măr verde": [52, 0.3, 0.2, 13.8], "Banana": [89, 1.1, 0.3, 22.8],
-        "Migdale crude": [14, 15], "Iaurt grecesc 2%": [9, 11, 16, 17],
-        "Brioșe Spanac": [247.46, 3.82, 15.3, 23.4], "Nuci pecan": [9, 11, 18]
-    },
-    "Prânz": {
-        "Tocană de legume": [29.15, 0.81, 0.85, 4.41], "Mâncare de linte": [188.41, 11.28, 2.71, 31.99],
-        "Orez integral legume": [150.4, 3.7, 2.5, 28.2], "Salată ton avocado": [2, 10, 19, 20],
-        "Somon file": [21, 22], "Piept de pui grătar": [165, 31, 3.6, 0],
-        "Rasol vită": [133, 22.6, 4.6, 0], "Mămăligă": [66, 1.4, 0.4, 14.3]
-    },
-    "Cină": {
-        "Cod la grătar": [12, 23, 24], "Supă de pui": [24.14, 2.15, 0.7, 0.28],
-        "Zucchini la grătar": [17, 1.2, 0.2, 3.1], "Creveți rucola": [12, 17, 25, 26],
-        "Salată pui crudități": [110, 15, 4, 3.5], "Piure conopidă": [57, 1, 4.3, 3.7]
-    }
+# 2. BAZĂ DE DATE EXTINSĂ (Extrase din Pag. 32-145)
+# Structură: "Aliment": [Kcal/100g, Proteine, Lipide, Glucide]
+db_alimente = {
+    "Tocană de legume": [29.15, 0.81, 0.85, 4.41],
+    "Mâncare de linte verde": [188.41, 11.28, 2.71, 31.99],
+    "Orez integral cu legume": [150.4, 3.7, 2.5, 28.2],
+    "Humus clasic": [230.9, 8.07, 15.16, 19.09],
+    "Salată de ton cu avocado": [158.0, 6.0, 12.0, 5.0],
+    "Kinder Felie de Lapte (Proteic)": [135.88, 13.0, 6.25, 6.5],
+    "Smoothie Verde": [54.2, 1.6, 0.08, 10.08],
+    "Budincă de chia cu zmeură": [105.4, 4.22, 6.69, 10.52],
+    "Omletă simplă": [155.0, 12.6, 10.6, 1.1],
+    "Piept de pui grătar": [165.0, 31.0, 3.6, 0.0],
+    "Somon file": [208.0, 20.0, 13.0, 0.0],
+    "Iaurt grecesc 2%": [69.0, 9.0, 2.0, 4.0],
+    "Brioșe legume": [95.0, 10.2, 3.4, 5.5],
+    "Pâine integrală": [223.3, 13.0, 1.7, 39.0],
+    "Mâncare de mazăre": [50.0, 3.2, 1.6, 6.0],
+    "Cod la grătar": [107.0, 24.0, 1.0, 0.0],
+    "Banana": [89.0, 1.1, 0.3, 22.8],
+    "Migdale crude": [575.0, 21.0, 49.0, 21.0],
+    "Brânză de vaci slabă": [125.0, 18.0, 4.4, 3.5],
+    "Cartof dulce copt": [116.0, 1.6, 0.1, 20.1]
 }
 
-# 3. SECURITATE (Parola conform pag. 156)
+# 3. SECURITATE
 if "login" not in st.session_state: st.session_state.login = False
 if not st.session_state.login:
-    st.title("🔐 Acces Protejat - Sistem Expert")
-    parola = st.text_input("Introduceți parola:", type="password")
+    st.title("🔐 Acces Protejat")
+    parola = st.text_input("Parolă", type="password")
     if st.button("Autentificare"):
         if parola == "nutrifit2026":
             st.session_state.login = True
             st.rerun()
-        else: st.error("Parolă incorectă!")
+        else: st.error("Parolă incorectă")
     st.stop()
 
-# 4. GESTIONARE CLIENȚI
-st.sidebar.title("👥 Administrare")
-nume_client = st.sidebar.text_input("Nume Client:", "Maria")
+# 4. PARAMETRI CALCULATOR (Metodologia Vasile Bogdan)
+st.sidebar.header("👤 Profil Client")
+nume = st.sidebar.text_input("Nume Client", "Maria")
+greutate = st.sidebar.number_input("Greutate Actuală (GA) kg", 40, 200, 70)
+inaltime = st.sidebar.number_input("Înălțime cm", 130, 220, 170)
+varsta = st.sidebar.number_input("Vârstă", 18, 95, 35)
+sex = st.sidebar.radio("Sex", ["Masculin", "Feminin"])
 
-# 5. CALCULATOR METABOLIC (Metodologia Vasile Bogdan)
-st.title(f"⚖️ Plan Nutrițional Matematic: {nume_client}")
-t1, t2 = st.tabs(["📊 Calculator", "📅 Plan 7 Zile"])
+# Indici Corespunzători (IC) - Pag. 12
+ic_valuri = {"Sedentar": 25, "Ușor": 30, "Mediu": 35, "Mare": 40, "Foarte Mare": 45}
+activitate = st.sidebar.selectbox("Nivel Activitate", list(ic_valuri.keys()))
+ic = ic_valuri[activitate]
 
-with t1:
-    c1, c2 = st.columns(2)
-    with c1:
-        g = st.number_input("Greutate actuală (GA) - kg", 40, 200, 70)
-        v = st.number_input("Vârstă", 18, 95, 35)
-        s = st.radio("Sex", ["Masculin", "Feminin"])
-    with c2:
-        # Indici corespunzători (IC) conform Pag. 11
-        ic_map = {"Sedentar": 25, "Ușor": 30, "Mediu": 35, "Mare": 40, "Foarte Mare": 45}
-        act = st.selectbox("Nivel Activitate (IC)", list(ic_map.keys()))
-        # CORECȚIA ERORII TALE: Definim opțiunile corect [1, 3]
-        def_cal = st.select_slider("Deficit Caloric (Kcal)", options=)
+# Deficit Caloric (Fixarea erorii tale) - Pag. 148
+deficit = st.sidebar.select_slider("Deficit Caloric (Kcal)", options=)
 
-    # Calcule [1, 5, 26, 27]
-    rmb_f = (0.9 if s == "Masculin" else 0.8) if v >= 65 else (1.0 if s == "Masculin" else 0.8)
-    rmb = rmb_f * g * 24
-    target = (g * ic_map[act]) - def_cal
-    if target < rmb: target = rmb # Protecție metabolică [2]
+# 5. LOGICA MATEMATICĂ
+# Formula RMB (Pag. 13, 25, 29)
+if varsta >= 65:
+    factor_rmb = 0.9 if sex == "Masculin" else 0.8
+else:
+    factor_rmb = 1.0 if sex == "Masculin" else 0.8
+rmb = factor_rmb * greutate * 24
 
-    # Nutrienți [4, 5]
-    p_g = g * (1.7 if ic_map[act] >= 35 else 1.2)
-    l_g = g * (1.0 if ic_map[act] >= 35 else 0.8)
-    c_g = (target - (p_g * 4) - (l_g * 9)) / 4
+# Formula TNC Mentinere (GA x IC) - Pag. 11
+tnc_mentinere = greutate * ic
+target_final = tnc_mentinere - deficit
 
-    st.success(f"Țintă Zilnică: {target:.0f} Kcal (RMB: {rmb:.0f})")
-    st.info(f"Necesar Nutrienți: P: {p_g:.0f}g | L: {l_g:.0f}g | G: {c_g:.0f}g")
+# Protecție Metabolică: Nu sub RMB! - Pag. 13, 148
+if target_final < rmb:
+    target_final = rmb
 
-with t2:
-    if st.button("🤖 Agent AI: Generează Plan 7 Zile (5 Mese)"):
-        zile = ["Luni", "Marți", "Miercuri", "Joi", "Vineri", "Sâmbătă", "Duminică"]
-        # Distribuția pe mese conform standardului profesional
-        dist = {"Mic Dejun": 0.25, "Gustare 1": 0.10, "Prânz": 0.35, "Gustare 2": 0.10, "Cină": 0.20}
-        
-        full_plan = []
-        for zi in zile:
-            for masa, proc in dist.items():
-                cat = "Gustări" if "Gustare" in masa else masa
-                aliment = random.choice(list(db[cat].keys()))
-                vals = db[cat][aliment]
-                
-                kcal_m = target * proc
-                gramaj = (kcal_m / vals) * 100
-                p_m = (gramaj * vals[12]) / 100
-                l_m = (gramaj * vals[17]) / 100
-                g_m = (gramaj * vals[28]) / 100
-                
-                full_plan.append({"Zi": zi, "Masă": masa, "Preparat": aliment, "Gramaj": f"{gramaj:.0f}g", 
-                                  "P": round(p_m,1), "L": round(l_m,1), "G": round(g_m,1)})
-        
-        df = pd.DataFrame(full_plan)
-        for zi in zile:
-            with st.expander(f"📅 Meniu {zi}"):
-                st.table(df[df["Zi"] == zi][["Masă", "Preparat", "Gramaj", "P", "L", "G"]])
+# Calcul Macronutrienți (Pag. 15-17)
+# Proteine și Lipide fixe per kg, Glucidele preiau restul
+prot_g = greutate * (1.7 if ic >= 35 else 1.2)
+lip_g = greutate * (1.0 if ic >= 35 else 0.8)
+gluc_kcal = target_final - (prot_g * 4) - (lip_g * 9)
+gluc_g = gluc_kcal / 4
+
+# 6. INTERFAȚĂ REZULTATE
+st.title(f"🍎 Plan Nutrițional Matematic: {nume}")
+c1, c2, c3 = st.columns(3)
+c1.metric("Țintă Zilnică", f"{target_final:.0f} Kcal")
+c2.metric("RMB (Minim)", f"{rmb:.0f} Kcal")
+c3.metric("Deficit Aplicat", f"{deficit} Kcal")
+
+st.info(f"**Necesar Macronutrienți:** P: {prot_g:.1f}g | L: {lip_g:.1f}g | G: {gluc_g:.1f}g")
+
+# 7. GENERATOR AUTOMAT 7 ZILE (Agent AI)
+if st.button("🤖 Agent AI: Generează Plan 7 Zile (3 Mese + 2 Gustări)"):
+    zile = ["Luni", "Marți", "Miercuri", "Joi", "Vineri", "Sâmbătă", "Duminică"]
+    # Distribuție calorică pe mese - Pag. 157
+    distributie = {"Mic Dejun": 0.25, "Gustare 1": 0.10, "Prânz": 0.35, "Gustare 2": 0.10, "Cină": 0.20}
+    
+    plan_complet = []
+    for zi in zile:
+        for masa, procent in distributie.items():
+            preparat = random.choice(list(db_alimente.keys()))
+            kcal_100g = db_alimente[preparat]
+            
+            kcal_alocate = target_final * procent
+            # Formula Gramaj: (Kcal masă / Kcal aliment 100g) * 100
+            gramaj = (kcal_alocate / kcal_100g) * 100
+            
+            p_m = (gramaj * db_alimente[preparat][3]) / 100
+            l_m = (gramaj * db_alimente[preparat][4]) / 100
+            g_m = (gramaj * db_alimente[preparat][5]) / 100
+            
+            plan_complet.append({
+                "Zi": zi, "Masă": masa, "Preparat": preparat, 
+                "Gramaj": f"{gramaj:.0f}g", "Kcal": int(kcal_alocate),
+                "P": round(p_m,1), "L": round(l_m,1), "G": round(g_m,1)
+            })
+
+    df = pd.DataFrame(plan_complet)
+    for zi in zile:
+        with st.expander(f"📅 Meniu {zi}"):
+            st.table(df[df["Zi"] == zi][["Masă", "Preparat", "Gramaj", "Kcal", "P", "L", "G"]])
