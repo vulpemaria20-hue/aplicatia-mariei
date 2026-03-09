@@ -1,10 +1,11 @@
 import streamlit as st
 import pandas as pd
+import random
 
 # 1. Configurare Pagină
-st.set_page_config(page_title="Aplicația Mariei", layout="centered", page_icon="👩‍💻")
+st.set_page_config(page_title="NutriFit: Generator Meniu", layout="wide", page_icon="🥗")
 
-# --- SISTEM DE CONTROL ---
+# --- INITIALIZARE ---
 if "autentificat" not in st.session_state:
     st.session_state["autentificat"] = False
 if "pagina" not in st.session_state:
@@ -12,10 +13,10 @@ if "pagina" not in st.session_state:
 
 # --- ECRAN 0: LOGIN ---
 if not st.session_state["autentificat"]:
-    st.markdown("# 👩‍💻 Aplicația Mariei")
-    st.subheader("🔐 Introducere Parolă")
-    parola = st.text_input("Parola de acces:", type="password", key="pwd")
-    if st.button("Autentificare", key="login_btn"):
+    st.markdown("# 🥗 NutriFit Maria")
+    st.subheader("🔐 Acces Securizat")
+    parola = st.text_input("Parola de acces:", type="password")
+    if st.button("Intră în aplicație"):
         if parola == "nutrifit2026":
             st.session_state["autentificat"] = True
             st.session_state["pagina"] = "selectie"
@@ -24,58 +25,69 @@ if not st.session_state["autentificat"]:
             st.error("❌ Parolă incorectă!")
     st.stop()
 
-# --- ECRAN 1: SELECȚIE ---
+# --- ECRAN 1: SELECȚIE ALIMENTE (Minim 200 opțiuni) ---
 if st.session_state["pagina"] == "selectie":
-    st.markdown("# 👩‍💻 Aplicația Mariei")
-    st.info("👋 Bine ai venit! Te rugăm să parcurgi etapele de mai jos.")
-    st.markdown("### 📝 Pasul 1: Selecție Opțiuni")
+    st.markdown("# 🥗 Generator Meniu Personalizat")
+    st.info("Selectează alimentele preferate din listă, iar AI va genera planul pe 7 zile.")
     
-    # Generăm lista de 200 opțiuni solicitată
-    optiuni = [f"Serviciu NutriFit #{i}" for i in range(1, 201)]
-    alegeri = st.multiselect("Alege configurațiile:", options=optiuni, key="main_select")
+    # Lista extinsă de 200 de alimente/opțiuni (Exemple)
+    categorii = ["Proteine", "Carbohidrați", "Grăsimi Sănătoase", "Legume", "Fructe", "Mic Dejun"]
+    baza_date_alimente = [f"Opțiunea {i}: " + random.choice(["Pui la grătar", "Somon", "Quinoa", "Avocado", "Omletă", "Salată Verde", "Iaurt Grecesc", "Nuci", "Orez Brun", "Paste Integrale"]) + f" (Cod {i+100})" for i in range(1, 201)]
+    
+    st.markdown("### 📝 Pasul 1: Alege alimentele dorite")
+    alegeri = st.multiselect("Caută și selectează alimente (minim 200 opțiuni disponibile):", options=baza_date_alimente, key="nutri_select")
 
-    if alegeri:
+    if len(alegeri) > 0:
+        st.success(f"Ai selectat {len(alegeri)} alimente.")
         st.divider()
-        st.markdown("### 🤖 Pasul 2: Agent AI")
-        if st.button("🚀 Procesează datele cu AI", key="process_btn"):
-            st.session_state["final_data"] = alegeri
-            st.session_state["pagina"] = "raport"
+        st.markdown("### 🤖 Pasul 2: Agent AI NutriFit")
+        if st.button("🚀 Generează Meniul pe 7 Zile"):
+            st.session_state["alimente_plan"] = alegeri
+            st.session_state["pagina"] = "meniu"
             st.rerun()
     else:
-        st.warning("Te rugăm să selectezi cel puțin o opțiune pentru a continua.")
+        st.warning("Te rugăm să alegi câteva alimente pentru a putea crea meniul.")
 
-# --- ECRAN 2: RAPORT FINAL ---
-elif st.session_state["pagina"] == "raport":
-    st.markdown("# 👩‍💻 Aplicația Mariei")
-    st.success(f"✅ Agentul AI a procesat {len(st.session_state['final_data'])} elemente!")
+# --- ECRAN 2: MENIU PE 7 ZILE ---
+elif st.session_state["pagina"] == "meniu":
+    st.markdown("# 📅 Planul tău alimentar pe 7 zile")
+    st.success("Agentul AI a organizat alimentele selectate într-un plan săptămânal.")
     
-    st.subheader("📊 Previzualizare Tabel Final")
+    zile = ["Luni", "Marți", "Miercuri", "Joi", "Vineri", "Sâmbătă", "Duminică"]
+    alimente = st.session_state["alimente_plan"]
     
-    # Recreăm tabelul exact ca în imaginea ta originală
-    tabel_list = []
-    for idx, item in enumerate(st.session_state["final_data"]):
-        pret = 150.0
-        tabel_list.append({
-            "ID": idx + 1,
-            "Descriere": item,
-            "Cantitate": 1,
-            "Pret Unitar": pret,
-            "TVA (19%)": pret * 0.19,
-            "Total": pret * 1.19
+    # Distribuim alimentele alese pe zile
+    plan_zile = []
+    for i, zi in enumerate(zile):
+        # Alegem 3 alimente aleatorii din selecția utilizatorului pentru fiecare zi
+        # sau le punem în ordine dacă selecția e mică
+        if len(alimente) >= 3:
+            masa_zi = random.sample(alimente, 3)
+        else:
+            masa_zi = (alimente * 3)[:3]
+            
+        plan_zile.append({
+            "Ziua": zi,
+            "Mic Dejun": masa_zi[0],
+            "Prânz": masa_zi[1],
+            "Cină": masa_zi[2]
         })
     
-    df = pd.DataFrame(tabel_list)
-    st.dataframe(df, use_container_width=True)
+    df_meniu = pd.DataFrame(plan_zile)
+    st.table(df_meniu) # Afișare clară sub formă de tabel de nutriție
 
     st.divider()
-    csv = df.to_csv(index=False).encode('utf-8-sig')
-    st.download_button("📥 Descarcă Raportul", data=csv, file_name="Raport_Maria.csv", mime="text/csv")
     
-    if st.button("🔄 Începe o selecție nouă"):
+    # Export pentru pacient/client
+    st.subheader("💾 Exportă Meniul")
+    csv = df_meniu.to_csv(index=False).encode('utf-8-sig')
+    st.download_button("📥 Descarcă Planul Alimentar (CSV/Excel)", data=csv, file_name="Meniu_7_Zile_NutriFit.csv", mime="text/csv")
+    
+    if st.button("🔄 Modifică Selecția"):
         st.session_state["pagina"] = "selectie"
         st.rerun()
 
-# Logout în Sidebar
+# Sidebar Logout
 if st.sidebar.button("Logout"):
     st.session_state["autentificat"] = False
     st.session_state["pagina"] = "login"
