@@ -4,27 +4,34 @@ import pandas as pd
 # 1. Configurare Pagină
 st.set_page_config(page_title="Aplicația Mariei", layout="centered", page_icon="👩‍💻")
 
-# --- LOGICA DE SESIUNE (PENTRU FLUX) ---
-if "autentificat" not in st.session_state:
-    st.session_state["autentificat"] = False
-if "procesat" not in st.session_state:
-    st.session_state["procesat"] = False
+# --- INITIALIZARE VARIABILE DE SESIUNE ---
+# Acestea controlează ce vede utilizatorul la fiecare moment
+if "etapa" not in st.session_state:
+    st.session_state["etapa"] = "login"
 
-# --- 1. ECRAN LOGIN ---
-if not st.session_state["autentificat"]:
+# --- FUNCȚIE REPORNIRE ---
+def resetare_sesiune():
+    st.session_state["etapa"] = "login"
+    st.rerun()
+
+# --- LOGICA DE AFIȘARE PE ETAPE ---
+
+# ETAPA 1: LOGIN
+if st.session_state["etapa"] == "login":
     st.markdown("# 👩‍💻 Aplicația Mariei")
-    st.subheader("🔐 Autentificare Necesară")
+    st.subheader("🔐 Introducere Parolă")
+    
     parola = st.text_input("Introdu parola de acces:", type="password")
     
-    if st.button("Conectare"):
+    if st.button("Accesează Aplicația"):
         if parola == "nutrifit2026":
-            st.session_state["autentificat"] = True
+            st.session_state["etapa"] = "selectie"
             st.rerun()
         else:
             st.error("❌ Parolă incorectă!")
 
-# --- 2. ECRAN INTRODUCERE ȘI SELECȚIE ---
-elif st.session_state["autentificat"] and not st.session_state["procesat"]:
+# ETAPA 2: SELECȚIE OPȚIUNI (Clientul alege din 200 de variante)
+elif st.session_state["etapa"] == "selectie":
     st.markdown("# 👩‍💻 Aplicația Mariei")
     st.info("👋 Bine ai venit! Te rugăm să parcurgi etapele de mai jos.")
     
@@ -36,27 +43,35 @@ elif st.session_state["autentificat"] and not st.session_state["procesat"]:
     selectie_utilizator = st.multiselect("Selectează opțiunile:", options=optiuni)
 
     if selectie_utilizator:
-        st.divider()
-        st.markdown("### 🤖 Pasul 2: Activare Agent AI")
-        st.write("Acum poți trimite selecția către Agentul AI pentru procesare.")
-        
-        if st.button("Procesează datele cu Agentul AI"):
-            st.session_state["selectie"] = selectie_utilizator
-            st.session_state["procesat"] = True
+        st.session_state["selectie_finala"] = selectie_utilizator
+        if st.button("Confirmă Selecția și Treci la Agentul AI"):
+            st.session_state["etapa"] = "agent_ai"
             st.rerun()
     else:
         st.warning("Te rugăm să selectezi cel puțin o opțiune pentru a continua.")
 
-# --- 3. ECRAN FINAL (RAPORT ȘI EXPORT) ---
-else:
+# ETAPA 3: ACTIVARE AGENT AI
+elif st.session_state["etapa"] == "agent_ai":
     st.markdown("# 👩‍💻 Aplicația Mariei")
-    st.success(f"✅ Agentul AI a finalizat procesarea celor {len(st.session_state['selectie'])} elemente!")
+    st.subheader("🤖 Pasul 2: Activare Agent AI")
+    st.write(f"Ai selectat {len(st.session_state['selectie_finala'])} elemente.")
+    
+    if st.button("🚀 Procesează datele cu Agentul AI"):
+        with st.spinner('Agentul AI calculează datele...'):
+            # Aici poți adăuga logică AI reală sau procesare
+            st.session_state["etapa"] = "export"
+            st.rerun()
+
+# ETAPA 4: TABEL FINAL ȘI EXPORT EXCEL
+elif st.session_state["etapa"] == "export":
+    st.markdown("# 👩‍💻 Aplicația Mariei")
+    st.success("✅ Agentul AI a finalizat procesarea!")
     
     st.subheader("📋 Previzualizare Tabel Final")
     
     # Construim tabelul pe baza selecției
     date_raport = []
-    for item in st.session_state["selectie"]:
+    for item in st.session_state["selectie_finala"]:
         pret = 150.0
         date_raport.append({
             "Denumire": item,
@@ -84,10 +99,9 @@ else:
     )
 
     if st.button("🔄 Începe o sesiune nouă"):
-        st.session_state["procesat"] = False
-        st.rerun()
+        resetare_sesiune()
 
+# Meniu de Ieșire în lateral (disponibil oricând după login)
+if st.session_state["etapa"] != "login":
     if st.sidebar.button("Logout"):
-        st.session_state["autentificat"] = False
-        st.session_state["procesat"] = False
-        st.rerun()
+        resetare_sesiune()
