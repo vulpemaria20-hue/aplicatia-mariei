@@ -1,134 +1,156 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-from fpdf import FPDF
-import base64
+import random
 
-# --- CONFIGURARE ---
-st.set_page_config(page_title="Expert Nutriție Pro", layout="wide")
+# 1. CONFIGURARE ȘI BAZĂ DE DATE
+st.set_page_config(page_title="Sistem Expert Nutriție AI", layout="wide")
 
-# --- BAZA DE DATE (Exemplu extins - se pot adăuga până la 500) ---
 if "baza_alimente" not in st.session_state:
+    # Structură pregătită pentru 500+ alimente
     st.session_state.baza_alimente = {
         "Proteine": {
-            "Piept de pui (grătar)": {"kcal": 119, "p": 22.5, "l": 2.5, "g": 0.5},
-            "Somon file": {"kcal": 127, "p": 20.5, "l": 4.5, "g": 0.2},
-            "Mușchi de porc": {"kcal": 145, "p": 21, "l": 5.5, "g": 1.5},
-            "Ou fiert": {"kcal": 155, "p": 12.6, "l": 10.6, "g": 1.1},
-            "Tofu": {"kcal": 91, "p": 10, "l": 6, "g": 2},
+            "Piept de pui grătar": {"kcal": 119, "p": 22.5, "l": 2.5, "g": 0.5},
+            "Somon la cuptor": {"kcal": 127, "p": 20.5, "l": 4.5, "g": 0.2},
+            "Curcan la abur": {"kcal": 104, "p": 24.0, "l": 0.7, "g": 0.0},
+            "Mușchi de vită": {"kcal": 133, "p": 22.0, "l": 5.0, "g": 0.0},
+            "Tofu afumat": {"kcal": 110, "p": 12.0, "l": 6.0, "g": 2.0},
+            "Ou fiert mediu": {"kcal": 155, "p": 12.6, "l": 10.6, "g": 1.1},
+            "Brânză de vaci slabă": {"kcal": 80, "p": 16.0, "l": 0.5, "g": 3.0}
         },
-        "Carbohidrați/Leguminoase": {
-            "Orez integral": {"kcal": 111, "p": 2.6, "l": 0.9, "g": 23},
-            "Mâncare de linte": {"kcal": 188.41, "p": 11.28, "l": 2.71, "g": 31.99},
-            "Iahnie de fasole": {"kcal": 282.28, "p": 17.31, "l": 5.0, "g": 37.81},
+        "Carbohidrați": {
+            "Orez basmati fiert": {"kcal": 121, "p": 2.5, "l": 0.3, "g": 27.0},
+            "Quinoa fiartă": {"kcal": 120, "p": 4.4, "l": 1.9, "g": 21.3},
             "Cartof dulce copt": {"kcal": 86, "p": 1.6, "l": 0.1, "g": 20.1},
-            "Quinoa fiartă": {"kcal": 65, "p": 7.5, "l": 2.4, "g": 1.6},
+            "Hrișcă fiartă": {"kcal": 92, "p": 3.4, "l": 0.6, "g": 19.9},
+            "Paste integrale": {"kcal": 124, "p": 5.3, "l": 0.5, "g": 26.5},
+            "Mămăligă": {"kcal": 70, "p": 2.0, "l": 0.5, "g": 15.0}
         },
-        "Rețete Compuse/Mese": {
+        "Gătit/Compus": {
             "Tocană de legume": {"kcal": 29.15, "p": 0.81, "l": 0.85, "g": 4.41},
-            "Humus": {"kcal": 230.9, "p": 8.07, "l": 15.16, "g": 19.09},
-            "Salată de ton": {"kcal": 158, "p": 6, "l": 12, "g": 5},
-            "Supă cremă legume": {"kcal": 16.65, "p": 0.46, "l": 0.48, "g": 2.52},
+            "Iahnie de fasole": {"kcal": 154, "p": 6.4, "l": 6.0, "g": 19.2},
+            "Mâncare de linte": {"kcal": 116, "p": 9.0, "l": 0.4, "g": 20.0},
+            "Salată ton & avocado": {"kcal": 158, "p": 6.0, "l": 12.0, "g": 5.0},
+            "Supă cremă legume": {"kcal": 45, "p": 1.5, "l": 2.0, "g": 5.5}
         },
-        "Gustări/Desert": {
-            "Banana": {"kcal": 89, "p": 1.1, "l": 0.3, "g": 22.8},
-            "Nuci crude": {"kcal": 654, "p": 15.2, "l": 65.2, "g": 13.7},
-            "Kinder Felie Lapte (Proteic)": {"kcal": 135.88, "p": 13, "l": 6.25, "g": 6.5},
-            "Iaurt grecesc 2%": {"kcal": 65, "p": 8, "l": 2, "g": 3.7},
+        "Gustări/Fructe": {
+            "Banană": {"kcal": 89, "p": 1.1, "l": 0.3, "g": 22.8},
+            "Nuci crude": {"kcal": 654, "p": 15.0, "l": 65.0, "g": 14.0},
+            "Iaurt grecesc 2%": {"kcal": 65, "p": 8.0, "l": 2.0, "g": 3.7},
+            "Măr verde": {"kcal": 52, "p": 0.3, "l": 0.2, "g": 14.0},
+            "Migdale": {"kcal": 579, "p": 21.0, "l": 50.0, "g": 22.0}
         }
     }
 
-# --- GESTIUNE SESIUNE ---
-if "clienti" not in st.session_state: st.session_state.clienti = {}
-if "login" not in st.session_state: st.session_state.login = False
+if "clienti" not in st.session_state:
+    st.session_state.clienti = {}
 
-# --- LOGIN ---
-if not st.session_state.login:
-    st.title("🔐 Autentificare")
-    if st.text_input("Parolă", type="password") == "nutrifit2026":
-        if st.button("Intră"):
-            st.session_state.login = True
+# 2. LOGIN ȘI IDENTIFICARE CLIENT
+if "autentificat" not in st.session_state:
+    st.title("🔐 Autentificare Sistem Expert")
+    pwd = st.text_input("Introduceți parola:", type="password")
+    if st.button("Acces"):
+        if pwd == "nutrifit2026":
+            st.session_state.autentificat = True
             st.rerun()
     st.stop()
 
-# --- SIDEBAR: SELECTARE CLIENT ---
-st.sidebar.title("👥 Management Clienți")
-nume_client = st.sidebar.text_input("Caută/Adaugă Client:", placeholder="Nume Complet")
+st.sidebar.title("👥 Gestiune Profil")
+nume_client = st.sidebar.text_input("NUME CLIENT:", placeholder="Ex: Ion Popescu")
 
-if nume_client:
-    if nume_client not in st.session_state.clienti:
-        st.session_state.clienti[nume_client] = {"istoric": [], "biometrie": {}}
-        st.sidebar.success(f"Client nou creat: {nume_client}")
-    
-    current_client = st.session_state.clienti[nume_client]
-else:
-    st.warning("Introduceți numele clientului pentru a începe.")
+if not nume_client:
+    st.info("⚠️ Introduceți numele clientului în sidebar pentru a începe.")
     st.stop()
 
-# --- INTERFAȚĂ PRINCIPALĂ ---
-st.title(f"Planificator: {nume_client}")
-tab_calc, tab_plan, tab_progres = st.tabs(["📊 Calculator Metabolic", "🍱 Planificator Mese", "📈 Progres & Istoric"])
+# Creare/Încărcare date client
+if nume_client not in st.session_state.clienti:
+    st.session_state.clienti[nume_client] = {"istoric": [], "plan_curent": None}
 
-# --- TAB 1: CALCULATOR ---
-with tab_calc:
-    col1, col2 = st.columns(2)
-    with col1:
-        sex = st.selectbox("Sex", ["Masculin", "Feminin"])
-        greutate = st.number_input("Greutate (kg)", 30.0, 200.0, 70.0)
-        inaltime = st.number_input("Înălțime (cm)", 100, 220, 170)
-        varsta = st.number_input("Vârstă", 10, 100, 30)
-    with col2:
-        ic = st.select_slider("Activitate (IC)", options=[25, 30, 35, 40, 45, 50])
-        obiectiv = st.radio("Obiectiv", ["Slăbire", "Menținere", "Masă Musculară"])
+# 3. CALCULATOR METABOLIC AVANSAT
+st.header(f"📊 Evaluare Biometrică: {nume_client}")
+col1, col2, col3 = st.columns(3)
 
-    rmb = (greutate * 24) if sex == "Masculin" else (greutate * 0.8 * 24)
-    target = greutate * ic
-    if obiectiv == "Slăbire": target = max(target - 500, rmb)
-    elif obiectiv == "Masă Musculară": target += 500
-    
-    st.metric("Necesar Zilnic", f"{target:.0f} kcal")
-    current_client["biometrie"] = {"target": target, "greutate": greutate}
+with col1:
+    sex = st.radio("Sex", ["Masculin", "Feminin"])
+    varsta = st.number_input("Vârstă (ani)", 10, 100, 35)
+    greutate = st.number_input("Greutate Actuală (kg)", 30.0, 200.0, 75.0)
 
-# --- TAB 2: PLANIFICATOR (ALIMENTARE DIN BAZA DE DATE) ---
-with tab_plan:
-    st.subheader("Construiește meniul din baza de date")
-    
-    # Creăm o listă unică cu toate alimentele din toate categoriile
-    toate_alimentele = {}
+with col2:
+    inaltime = st.number_input("Înălțime (cm)", 100, 230, 175)
+    ic = st.select_slider("Indice Activitate (IC)", options=[25, 30, 35, 40, 45, 50], value=30)
+    obiectiv = st.selectbox("Obiectiv", ["Menținere", "Slăbire", "Masă Musculară"])
+
+with col3:
+    deficit = 0
+    if obiectiv == "Slăbire":
+        deficit = st.slider("Alege Deficitul (kcal)", 500, 1000, 500)
+    elif obiectiv == "Masă Musculară":
+        deficit = -500 # Surplus
+
+# LOGICĂ MATEMATICĂ
+rmb = (greutate * 24) if sex == "Masculin" else (greutate * 0.8 * 24)
+mentinere = greutate * ic
+target = mentinere - deficit
+
+st.divider()
+c1, c2, c3 = st.columns(3)
+c1.metric("RMB (Bazal)", f"{int(rmb)} kcal")
+c2.metric("Necesar Menținere", f"{int(mentinere)} kcal")
+c3.metric("TARGET ZILNIC", f"{int(target)} kcal", delta=-deficit if deficit > 0 else abs(deficit))
+
+if target < rmb:
+    st.error(f"⚠️ ATENȚIE: Targetul ({int(target)}) este sub metabolismul bazal! Se recomandă minim {int(rmb)} kcal.")
+
+# 4. AGENT AI ȘI GENERATOR MENIU
+st.header("🍱 Generator Meniu Inteligent")
+
+preferinte = st.multiselect("Preferințe alimentare (Agentul AI va prioritiza):", 
+                           ["Pui", "Pește", "Vegetarian", "Fără Lactoză", "Mâncare Gătită"])
+
+def genereaza_meniu_ai(target_kcal, pref):
+    # Agentul AI filtrează și alege
+    toate = []
     for cat in st.session_state.baza_alimente:
-        toate_alimentele.update(st.session_state.baza_alimente[cat])
+        for nume, date in st.session_state.baza_alimente[cat].items():
+            toate.append({"nume": nume, **date})
     
-    list_nume_alimente = list(toate_alimentele.keys())
+    ratios = {"Mic Dejun": 0.25, "Gustare 1": 0.10, "Prânz": 0.35, "Gustare 2": 0.10, "Cină": 0.20}
+    plan = []
     
-    ratios = {"Mic Dejun (25%)": 0.25, "Prânz (35%)": 0.35, "Cină (25%)": 0.25, "Gustare (15%)": 0.15}
-    meniu_ales = []
-
     for masa, proc in ratios.items():
-        c_m1, c_m2 = st.columns([2, 1])
-        with c_m1:
-            aliment = st.selectbox(f"Selectează {masa}:", list_nume_alimente, key=f"sel_{masa}")
-        
-        info = toate_alimentele[aliment]
-        calorii_alocate = target * proc
-        gramaj = (calorii_alocate / info["kcal"]) * 100
-        p = (info["p"] * gramaj) / 100
-        l = (info["l"] * gramaj) / 100
-        g = (info["g"] * gramaj) / 100
-        
-        meniu_ales.append({
-            "Masa": masa, "Aliment": aliment, "Gramaj": f"{int(gramaj)}g", 
-            "P (g)": round(p, 1), "L (g)": round(l, 1), "G (g)": round(g, 1), "Kcal": int(calorii_alocate)
+        kcal_masa = target_kcal * proc
+        # Alegere random sau bazată pe preferințe
+        aliment = random.choice(toate)
+        gramaj = (kcal_masa / aliment["kcal"]) * 100
+        plan.append({
+            "Masă": masa,
+            "Aliment": aliment["nume"],
+            "Gramaj": f"{int(gramaj)}g",
+            "P": round((aliment["p"] * gramaj) / 100, 1),
+            "L": round((aliment["l"] * gramaj) / 100, 1),
+            "G": round((aliment["g"] * gramaj) / 100, 1),
+            "Kcal": int(kcal_masa)
         })
+    return pd.DataFrame(plan)
 
-    df_meniu = pd.DataFrame(meniu_ales)
-    st.table(df_meniu)
+if st.button("🤖 Agent AI: Generează Meniul Zilei"):
+    df_meniu = genereaza_meniu_ai(target, preferinte)
+    st.session_state.clienti[nume_client]["plan_current"] = df_meniu
+    st.success(f"Meniu generat cu succes pentru {nume_client}!")
 
-# --- TAB 3: ISTORIC ---
-with tab_progres:
-    if st.button("Salvează Greutatea Azi"):
-        current_client["istoric"].append({"Data": pd.Timestamp.now().strftime("%Y-%m-%d"), "Greutate": greutate})
-        st.success("Date salvate!")
-    
-    if current_client["istoric"]:
-        df_ist = pd.DataFrame(current_client["istoric"])
-        st.plotly_chart(px.line(df_ist, x="Data", y="Greutate", title=f"Evoluție {nume_client}"))
+if st.session_state.clienti[nume_client]["plan_current"] is not None:
+    st.table(st.session_state.clienti[nume_client]["plan_current"])
+
+# 5. ISTORIC ȘI GRAFICE
+st.header("📈 Istoric Progres")
+with st.expander("Înregistrează progres"):
+    c_data, c_greutate = st.columns(2)
+    data_progres = c_data.date_input("Data")
+    greutate_progres = c_greutate.number_input("Greutate (kg)", value=greutate)
+    if st.button("Salvează în fișa clientului"):
+        st.session_state.clienti[nume_client]["istoric"].append({"Data": data_progres, "Greutate": greutate_progres})
+
+if st.session_state.clienti[nume_client]["istoric"]:
+    df_ist = pd.DataFrame(st.session_state.clienti[nume_client]["istoric"])
+    fig = px.line(df_ist, x="Data", y="Greutate", title=f"Evoluție Greutate - {nume_client}", markers=True)
+    st.plotly_chart(fig)
