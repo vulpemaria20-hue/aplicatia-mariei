@@ -1,165 +1,116 @@
 import streamlit as st
 import pandas as pd
 
-# 1. CONFIGURARE PAGINĂ (Profesională și atractivă)
-st.set_page_config(page_title="Nutriția Matematică - Sistem Expert", page_icon="⚖️", layout="wide")
+# CONFIGURARE PROFESIONALĂ
+st.set_page_config(page_title="Matematica Nutriției - Sistem Expert", layout="wide")
 
-# 2. SISTEM DE SECURITATE (Acces limitat)
-if "autentificat" not in st.session_state:
-    st.session_state.autentificat = False
-
-if not st.session_state.autentificat:
-    st.title("🔐 Acces Rezervat - Matematica Nutriției")
-    st.markdown("Vă rugăm să introduceți parola de acces pentru a utiliza sistemul expert.")
-    parola_introdusa = st.text_input("Parolă", type="password")
-    if st.button("Autentificare"):
-        if parola_introdusa == "nutrifit2026":
-            st.session_state.autentificat = True
-            st.rerun()
-        else:
-            st.error("Parolă incorectă. Vă rugăm să contactați administratorul.")
-    st.stop()
-
-# 3. GESTIONARE CLIENȚI (Bara laterală pentru multiplicitate)
-st.sidebar.title("👥 Administrare Clienți")
-nume_client = st.sidebar.text_input("Nume și Prenume Client", placeholder="Ex: Maria Ionescu")
-
-if not nume_client:
-    st.info("Introduceți numele clientului în bara laterală pentru a activa funcțiile de calcul.")
-    st.stop()
-
-# 4. BAZA DE DATE ALIMENTE ȘI REȚETE (Kcal/100g extrase din surse) [1-5]
-baza_alimente = {
-    "Tocană de legume": 29.15, "Mâncare de linte": 52.0, "Orez integral cu legume": 150.4,
-    "Humus": 230.9, "Salată de ton": 158.0, "Omletă": 155.0, "Smoothie Verde": 54.2,
-    "Kinder Felie de Lapte": 135.88, "Brioșe Spanac & Banană": 247.46, "Budincă Chia": 105.4,
-    "Banana": 89.0, "Pâine integrală": 223.3, "Supă de pui": 24.14, "Iaurt grecesc 2%": 69.0,
-    "Somon file": 208.0, "Vită slabă": 133.0, "Cod la grătar": 107.0, "Brioșe legume": 95.0
+# ====================================================
+# 1. BAZA DE DATE EXTINSĂ (Date extrase din Pag. 32-107)
+# ====================================================
+# Valorile sunt per 100g de produs finit/ingredient
+db_alimente = {
+    "Tocană de legume": {"kcal": 29.15, "P": 0.81, "L": 0.85, "G": 4.41},
+    "Mâncare de linte": {"kcal": 188.41, "P": 11.28, "L": 2.71, "G": 31.99},
+    "Supă de pui": {"kcal": 24.14, "P": 2.15, "L": 0.7, "G": 0.28},
+    "Orez integral legume": {"kcal": 150.4, "P": 3.7, "L": 2.5, "G": 28.2},
+    "Salată ton avocado": {"kcal": 158.0, "P": 6.0, "L": 12.0, "G": 5.0},
+    "Kinder Felie Lapte": {"kcal": 135.88, "P": 13.0, "L": 6.25, "G": 6.5},
+    "Budincă Chia Zmeură": {"kcal": 105.4, "P": 4.22, "L": 6.69, "G": 10.52},
+    "Smoothie Verde": {"kcal": 54.2, "P": 1.6, "L": 0.08, "G": 10.08},
+    "Piept de pui grătar": {"kcal": 165.0, "P": 31.0, "L": 3.6, "G": 0.0},
+    "Somon file": {"kcal": 208.0, "P": 20.0, "L": 13.0, "G": 0.0},
+    "Omletă simplă": {"kcal": 155.0, "P": 12.6, "L": 10.6, "G": 1.1},
+    "Iaurt grecesc 2%": {"kcal": 69.0, "P": 9.0, "L": 2.0, "G": 4.0},
+    "Banana": {"kcal": 89.0, "P": 1.1, "L": 0.3, "G": 22.8},
+    "Migdale crude": {"kcal": 575.0, "P": 21.0, "L": 49.0, "G": 21.0},
+    "Pâine integrală": {"kcal": 223.3, "P": 13.0, "L": 1.7, "G": 39.0},
+    "Cartof dulce copt": {"kcal": 116.0, "P": 1.6, "L": 0.1, "G": 20.1},
+    "Brioșe legume": {"kcal": 95.0, "P": 10.2, "L": 3.4, "G": 5.5},
+    "Humus clasic": {"kcal": 230.9, "P": 8.0, "L": 14.0, "G": 18.0}
 }
+# Notă: Pentru a ajunge la 200+, se pot adăuga restul ingredientelor din tabelele de la pag. 32-107.
 
-# 5. FUNCȚII DE CALCUL CONFORM MANUALULUI
-def calcul_rmb(greutate, sex, varsta):
-    # RMB diferențiat: Adulți (Pag. 13) vs Seniori (Pag. 20)
+# ====================================================
+# 2. LOGICA DE CALCUL (Matematica Nutriției)
+# ====================================================
+def calcul_metabolic(greutate, sex, varsta, ic_tip, obiectiv):
+    # RMB (Pag. 10 & 29)
     if varsta >= 65:
-        factor = 0.9 if sex == "Masculin" else 0.8
+        factor_rmb = 0.9 if sex == "Masculin" else 0.8
     else:
-        factor = 1.0 if sex == "Masculin" else 0.8
-    return factor * greutate * 24
-
-def interpreteaza_imc(varsta, sex, imc):
-    # Tabel Pediatric (Pag. 20) vs Adult (Pag. 20)
-    if varsta < 18:
-        tabel_copii = {
-            "Masculin": {2: 18.8, 8: 19.3, 14: 24.8, 18: 27.9},
-            "Feminin": {2: 18.7, 8: 19.8, 14: 26.0, 18: 28.7}
-        }
-        limita = tabel_copii[sex].get(varsta, 25.0)
-        return "Obezitate" if imc >= limita else "Status Normal/Sub"
-    else:
-        if imc < 18.5: return "Subponderal"
-        elif imc < 25: return "Normoponderal"
-        elif imc < 30: return "Supraponderal"
-        else: return "Obezitate"
-
-# --- INTERFAȚA PRINCIPALĂ ---
-st.title(f"🍎 Plan Nutrițional: {nume_client}")
-tab1, tab2, tab3 = st.tabs(["📊 Calculator Metabolic", "🔍 Evaluare Evoluție", "🍱 Plan Alimentar"])
+        factor_rmb = 1.0 if sex == "Masculin" else 0.8
+    rmb = factor_rmb * greutate * 24
+    
+    # TNC - Mentinere (GA x IC - Pag. 11)
+    tnc_mentinere = greutate * ic_tip
+    
+    # Target Obiectiv (Pag. 11, 28)
+    target = tnc_mentinere
+    if obiectiv == "Scădere": target -= 500
+    elif obiectiv == "Creștere": target += 500
+    
+    # Siguranță: Nu sub RMB! (Pag. 8)
+    if target < rmb: target = rmb
+    
+    return rmb, target
 
 # ====================================================
-# TAB 1: CALCULATOR METABOLIC (Metoda Bogdan Vasile)
+# 3. INTERFAȚA UTILIZATOR
 # ====================================================
-with tab1:
-    col1, col2 = st.columns(2)
-    with col1:
-        tip_p = st.selectbox("Categorie", ["Adult (18-65)", "Senior (>65)", "Copil/Adolescent"])
-        greutate = st.number_input("Greutate (kg)", 10, 200, 70)
-        inaltime = st.number_input("Înălțime (cm)", 80, 230, 170)
-        varsta = st.number_input("Vârstă (ani)", 2, 100, 35)
-        sex = st.radio("Sex", ["Masculin", "Feminin"])
+st.title("⚖️ Matematica Nutriției - Sistem Expert")
+st.sidebar.header("🔐 Autentificare & Client")
+nume = st.sidebar.text_input("Nume Client", "Maria")
+parola = st.sidebar.text_input("Cod Acces", type="password")
 
-    with col2:
-        if tip_p == "Copil/Adolescent":
-            st.info("Necesar caloric fix conform grupei de vârstă.") # [6]
-            if varsta < 7: tnc = 1400
-            elif varsta < 10: tnc = 1800
-            elif varsta < 14: tnc = 2500 if sex == "Masculin" else 2250
-            else: tnc = 3250 if sex == "Masculin" else 2400
-        else:
-            activitate = st.selectbox("Activitate (Indice IC)", [
-                "Sedentar (25-30 kcal/kg)", "Ușor (30-35 kcal/kg)", 
-                "Mediu (35-40 kcal/kg)", "Mare (40-45 kcal/kg)"
-            ])
-            # Corecție eroare IndexError: extragem prima valoare din interval
-            ic = int(activitate.split("(")[7].split("-"))
-            tnc = greutate * ic # Formula GA x IC [8]
+if parola == "nutrifit2026":
+    tab1, tab2, tab3 = st.tabs(["📊 Calcule", "🍱 Plan Alimentar (5 Mese)", "🔍 Nutrienți"])
 
-        obiectiv = st.radio("Obiectivul Clientului", ["Menținere", "Scădere", "Creștere"])
-        target = tnc
-        if obiectiv == "Scădere": target -= 500
-        elif obiectiv == "Creștere": target += 500
-
-    if st.button("Generează Analiza"):
-        rmb = calcul_rmb(greutate, sex, varsta)
-        bmi = greutate / ((inaltime/100)**2)
-        status = interpreteaza_imc(varsta, sex, bmi)
+    with tab1:
+        col1, col2 = st.columns(2)
+        with col1:
+            greutate = st.number_input("Greutate (kg)", 40, 200, 70)
+            sex = st.radio("Sex", ["Masculin", "Feminin"])
+            varsta = st.number_input("Vârstă", 18, 95, 35)
+        with col2:
+            ic_map = {"Sedentar": 25, "Ușor": 30, "Mediu": 35, "Mare": 40, "Sportiv": 45}
+            act = st.selectbox("Activitate", list(ic_map.keys()))
+            obj = st.selectbox("Obiectiv", ["Menținere", "Scădere", "Creștere"])
         
-        st.subheader("Rezultate Analiză")
+        rmb, target = calcul_metabolic(greutate, sex, varsta, ic_map[act], obj)
+        st.metric("Target Zilnic", f"{target:.0f} kcal")
+        
+        # Calcul Macro (Pag. 14-15)
+        p_gr = greutate * (1.7 if act != "Sedentar" else 1.2)
+        l_gr = greutate * (1.0 if act != "Sedentar" else 0.8)
+        g_kcal = target - (p_gr * 4) - (l_gr * 9)
+        g_gr = g_kcal / 4 if g_kcal > 0 else 0
+
+    with tab2:
+        st.subheader(f"Meniu pentru {nume} - {target:.0f} kcal")
+        dist = {"Mic Dejun": 0.25, "Gustare 1": 0.10, "Prânz": 0.35, "Gustare 2": 0.10, "Cină": 0.20}
+        
+        plan_zile = []
+        for masa, procent in dist.items():
+            kcal_masa = target * procent
+            # Selecție aliment bazată pe masa respectivă
+            options = list(db_alimente.keys())
+            sel = st.selectbox(f"Alege {masa}", options, key=masa)
+            
+            gramaj = (kcal_masa / db_alimente[sel]["kcal"]) * 100
+            p_masa = (gramaj * db_alimente[sel]["P"]) / 100
+            l_masa = (gramaj * db_alimente[sel]["L"]) / 100
+            g_masa = (gramaj * db_alimente[sel]["G"]) / 100
+            
+            plan_zile.append({"Masă": masa, "Aliment": sel, "Cantitate (g)": f"{gramaj:.0f} g", 
+                              "Kcal": f"{kcal_masa:.0f}", "P (g)": f"{p_masa:.1f}", 
+                              "L (g)": f"{l_masa:.1f}", "G (g)": f"{g_masa:.1f}"})
+        
+        st.table(pd.DataFrame(plan_zile))
+
+    with tab3:
+        st.subheader("Verificare Echilibru Macronutrienți")
         c1, c2, c3 = st.columns(3)
-        c1.metric("Țintă Zilnică", f"{target:.0f} kcal")
-        c2.metric("RMB (Metabolism Bazal)", f"{rmb:.0f} kcal")
-        c3.metric("Indice IMC", f"{bmi:.1f}")
-        st.info(f"Interpretare IMC: **{status}**")
-        
-        if target < rmb:
-            st.error(f"⚠️ ATENȚIE: Targetul ({target:.0f} kcal) este sub RMB ({rmb:.0f} kcal). Risc de încetinire metabolică!") # [9]
-
-# ====================================================
-# TAB 2: EVALUARE EVOLUȚIE (Circumferințe și Plicometrie)
-# ====================================================
-with tab2:
-    st.subheader(f"Monitorizare Progres: {nume_client}")
-    st.write("Evaluarea corectă presupune măsurarea circumferințelor și a pliurilor adipoase la fiecare 2 săptămâni.") # [10]
-    
-    col_c, col_p = st.columns(2)
-    with col_c:
-        st.write("**Centimetru (cm)**")
-        talie = st.number_input("Circumferință Talie", 40, 160)
-        coapsa = st.number_input("Circumferință Coapsă", 20, 100)
-    with col_p:
-        st.write("**Plicometru (mm)**")
-        p_tri = st.number_input("Pliu Triceps", 0.0, 50.0)
-        p_abd = st.number_input("Pliu Abdomen", 0.0, 50.0)
-        st.info(f"Media pliurilor: {(p_tri + p_abd)/2:.1f} mm")
-    st.caption("Pierderea sănătoasă în greutate: Greutatea scade ȘI Talia scade.") # [10]
-
-# ====================================================
-# TAB 3: PLAN ALIMENTAR (Gramaje calculate automat)
-# ====================================================
-with tab3:
-    st.subheader(f"Meniu Personalizat ({target:.0f} kcal)")
-    dist = {"MD": 0.25, "G1": 0.10, "PZ": 0.35, "G2": 0.10, "CN": 0.20} # Distribuție standard
-    
-    col_a, col_b = st.columns(2)
-    with col_a:
-        md = st.selectbox("Mic Dejun (25%)", ["Omletă", "Smoothie Verde", "Budincă Chia", "Brioșe legume"])
-        pz = st.selectbox("Prânz (35%)", ["Tocană de legume", "Mâncare de linte", "Somon file", "Vită slabă"])
-    with col_b:
-        g1 = st.selectbox("Gustare (10%)", ["Banana", "Kinder Felie de Lapte", "Iaurt grecesc 2%"])
-        cn = st.selectbox("Cină (20%)", ["Salată de ton", "Cod la grătar", "Supă de pui"])
-
-    # Metoda de calcul a gramajului (Formula Pag. 117 din context / logică sursă)
-    def calc_g(food, ratio):
-        return (target * ratio / baza_alimente[food]) * 100
-
-    plan_df = pd.DataFrame({
-        "Masă": ["Mic Dejun", "Gustare", "Prânz", "Cină"],
-        "Preparat": [md, g1, pz, cn],
-        "Gramaj Recomandat": [
-            f"{calc_g(md, dist['MD']):.0f} g", 
-            f"{calc_g(g1, dist['G1']):.0f} g", 
-            f"{calc_g(pz, dist['PZ']):.0f} g", 
-            f"{calc_g(cn, dist['CN']):.0f} g"
-        ]
-    })
-    st.table(plan_df)
-    st.success("Plan generat profesional conform Metodologiei Vasile Bogdan.")
+        c1.metric("Proteine Necesar", f"{p_gr:.0f} g")
+        c2.metric("Lipide Necesar", f"{l_gr:.0f} g")
+        c3.metric("Glucide (Restul)", f"{g_gr:.0f} g")
+        st.info("Sistemul ajustează automat glucidele în funcție de targetul caloric ales [8].")
