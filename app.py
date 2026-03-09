@@ -2,68 +2,82 @@ import streamlit as st
 import pandas as pd
 
 # 1. Configurare Pagină
-st.set_page_config(page_title="NutriFit - Management Date", layout="centered", page_icon="🍏")
+st.set_page_config(page_title="Sistem Maria AI", layout="wide", page_icon="🤖")
 
-# --- SISTEM DE AUTENTIFICARE ---
-def check_auth():
-    if "authenticated" not in st.session_state:
-        st.session_state["authenticated"] = False
+# --- LOGICA DE AUTENTIFICARE ---
+if "autentificat" not in st.session_state:
+    st.session_state["autentificat"] = False
 
-    if not st.session_state["authenticated"]:
-        st.title("🔐 Acces NutriFit 2026")
-        user_password = st.text_input("Introdu parola de acces:", type="password")
-        
-        if st.button("Autentificare"):
-            if user_password == "nutrifit2026":
-                st.session_state["authenticated"] = True
-                st.rerun()
-            else:
-                st.error("❌ Parolă incorectă!")
-        return False
-    return True
+def ecran_login():
+    st.title("🔐 Acces Sistem NutriFit 2026")
+    parola = st.text_input("Introdu parola de acces:", type="password")
+    if st.button("Conectare"):
+        if parola == "nutrifit2026":
+            st.session_state["autentificat"] = True
+            st.rerun()
+        else:
+            st.error("Parolă incorectă!")
 
-# --- LOGICA PRINCIPALĂ ---
-if check_auth():
+# --- APLICAȚIA PROPRIU-ZISĂ ---
+if not st.session_state["autentificat"]:
+    ecran_login()
+else:
+    # Meniu lateral
+    st.sidebar.title("Meniu Agent AI")
     if st.sidebar.button("Ieșire (Logout)"):
-        st.session_state["authenticated"] = False
+        st.session_state["autentificat"] = False
         st.rerun()
 
-    st.markdown("# 📊 Finalizare și Export Date")
+    # 2. AGENTUL AI ȘI SELECȚIA CELOR 200 DE OPȚIUNI
+    st.title("🤖 Agent AI NutriFit")
+    st.write("Salut! Sunt asistentul tău. Selectează opțiunile pentru raportul final.")
+
+    # Generăm o listă de 200 de opțiuni pentru Agentul AI
+    optiuni_ai = [f"Opțiunea {i}: Plan Nutrițional {i*5} calorii" for i in range(1, 201)]
     
-    # 1. Datele
-    data = {
-        "ID": [1, 2, 3, 4],
-        "Descriere": ["Abonament Fit", "Consultanță Nutriție", "Suplimente Vitamine", "Plan Personalizat"],
-        "Cantitate": [12, 5, 20, 3],
-        "Pret Unitar (RON)": [200, 150, 85, 450]
-    }
-    df = pd.DataFrame(data)
-
-    # 2. Calcule Automate
-    df["Total Fara TVA"] = df["Cantitate"] * df["Pret Unitar (RON)"]
-    df["TVA (19%)"] = df["Total Fara TVA"] * 0.19
-    df["Total Final (RON)"] = df["Total Fara TVA"] + df["TVA (19%)"]
-
-    # 3. Prezentare Tabel
-    st.subheader("📋 Previzualizare Date")
-    st.dataframe(df, use_container_width=True)
-
-    st.divider()
-
-    # 4. Zona de Export (Format CSV - Cel mai sigur)
-    st.subheader("💾 Exportă Raportul")
-    
-    nume_fisier = st.text_input("Denumire fișier:", value="Raport_NutriFit_2026")
-    
-    # Transformăm tabelul în format CSV (text) pe care Excel îl citește nativ
-    csv = df.to_csv(index=False).encode('utf-8-sig')
-
-    st.download_button(
-        label="Descarcă Raport (Format CSV/Excel)",
-        data=csv,
-        file_name=f"{nume_fisier}.csv",
-        mime="text/csv",
-        help="Acest fișier se deschide direct cu Excel."
+    selected_options = st.multiselect(
+        "Alege din cele 200 de configurații disponibile:",
+        optiuni_ai,
+        default=optiuni_ai[:3] # Pre-selectăm primele 3 pentru exemplu
     )
-    
-    st.info("💡 Sfat: După ce deschizi fișierul în Excel, îl poți salva ca 'Excel Workbook (.xlsx)' folosind 'Save As'.")
+
+    if st.button("Procesează datele cu AI"):
+        st.success("Agentul AI a finalizat procesarea!")
+        
+        # 3. GENERARE RAPORT PE BAZA SELECȚIEI
+        st.divider()
+        st.subheader("📊 Tabel Rezultate Final")
+        
+        # Creăm tabelul bazat pe ce s-a ales din lista de 200
+        raport_data = []
+        for item in selected_options:
+            pret_baza = 150 # Exemplu pret
+            raport_data.append({
+                "Denumire Serviciu": item,
+                "Cantitate": 1,
+                "Pret Unitar (RON)": pret_baza,
+                "TVA (19%)": pret_baza * 0.19,
+                "Total de Plata": pret_baza * 1.19
+            })
+        
+        df_final = pd.DataFrame(raport_data)
+        st.dataframe(df_final, use_container_width=True)
+
+        # 4. EXPORT (Format sigur CSV)
+        st.divider()
+        st.subheader("💾 Finalizare și Export")
+        
+        nume_fisier = st.text_input("Nume fișier export:", value="Raport_Final_Maria")
+        
+        # Conversie CSV sigură pentru Excel (cu utf-8-sig pentru caractere speciale)
+        csv_data = df_final.to_csv(index=False).encode('utf-8-sig')
+
+        st.download_button(
+            label="📥 Descarcă Raportul (CSV/Excel)",
+            data=csv_data,
+            file_name=f"{nume_fisier}.csv",
+            mime="text/csv"
+        )
+
+# --- NOTĂ FINALĂ ---
+# Acest cod acoperă tot fluxul: Login -> AI Selection (200 optiuni) -> Tabel -> Export.
