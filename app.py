@@ -4,72 +4,59 @@ import pandas as pd
 # 1. Configurare Pagină
 st.set_page_config(page_title="Aplicația Mariei", layout="centered", page_icon="👩‍💻")
 
-# --- CONTROLUL ACCESULUI (STRICT) ---
-if "autentificat" not in st.session_state:
-    st.session_state["autentificat"] = False
+# --- INITIALIZARE VARIABILE DE SESIUNE ---
+# Acestea controlează ce etapă vede utilizatorul
+if "etapa" not in st.session_state:
+    st.session_state["etapa"] = "login"
 
-# FUNCȚIE DE LOGIN
-def ecran_logare():
+# --- ETAPA 1: LOGARE ---
+if st.session_state["etapa"] == "login":
     st.markdown("# 👩‍💻 Aplicația Mariei")
     st.subheader("🔐 Introducere Parolă")
-    parola_introdusa = st.text_input("Introdu parola de acces:", type="password")
     
-    if st.button("Verifică și Intră"):
-        if parola_introdusa == "nutrifit2026":
-            st.session_state["autentificat"] = True
+    parola = st.text_input("Introdu parola de acces:", type="password")
+    
+    if st.button("Accesează Aplicația"):
+        if parola == "nutrifit2026":
+            st.session_state["etapa"] = "selectie"
             st.rerun()
         else:
             st.error("❌ Parolă incorectă!")
+    st.stop() # Oprește execuția aici până la logare
 
-# DACĂ NU ESTE LOGAT, AFIȘĂM DOAR LOGIN ȘI OPRIM TOTUL AICI
-if not st.session_state["autentificat"]:
-    ecran_logare()
-    st.stop()  # <--- Această comandă blochează orice execuție ulterioară
-
-# --- DACĂ AM AJUNS AICI, UTILIZATORUL ESTE AUTENTIFICAT ---
-
-# Gestionare etape după logare
-if "etapa_procesare" not in st.session_state:
-    st.session_state["etapa_procesare"] = "selectie"
-
-# Buton Logout în meniul lateral
-if st.sidebar.button("Ieșire (Logout)"):
-    st.session_state["autentificat"] = False
-    st.session_state["etapa_procesare"] = "selectie"
-    st.rerun()
-
-st.markdown("# 👩‍💻 Aplicația Mariei")
-
-# ETAPA DE SELECȚIE (Pasul 1)
-if st.session_state["etapa_procesare"] == "selectie":
+# --- ETAPA 2: SELECȚIE OPȚIUNI (Imaginea 3 din mesajul tău) ---
+if st.session_state["etapa"] == "selectie":
+    st.markdown("# 👩‍💻 Aplicația Mariei")
     st.info("👋 Bine ai venit! Te rugăm să parcurgi etapele de mai jos.")
+    
     st.markdown("### 📝 Pasul 1: Selecție Opțiuni")
     st.write("Alege serviciile dorite din lista de 200 de configurații:")
 
-    # Lista celor 200 de opțiuni
-    optiuni_200 = [f"Serviciu NutriFit #{i}: Configurație Premium" for i in range(1, 201)]
-    selectie = st.multiselect("Selectează opțiunile:", options=optiuni_200)
+    # Generăm lista celor 200 de opțiuni
+    optiuni = [f"Opțiunea {i}: Plan NutriFit #{i}" for i in range(1, 201)]
+    selectie = st.multiselect("Selectează opțiunile:", options=optiuni)
 
     if selectie:
+        st.session_state["selectie_utilizator"] = selectie
         st.divider()
         st.markdown("### 🤖 Pasul 2: Activare Agent AI")
         if st.button("Procesează selecția cu Agentul AI"):
-            st.session_state["rezultate_finale"] = selectie
-            st.session_state["etapa_procesare"] = "tabel"
+            st.session_state["etapa"] = "tabel_final"
             st.rerun()
     else:
         st.warning("Te rugăm să selectezi cel puțin o opțiune pentru a continua.")
 
-# ETAPA DE TABEL ȘI EXPORT (Pasul 2)
-elif st.session_state["etapa_procesare"] == "tabel":
+# --- ETAPA 3: TABEL ȘI EXPORT (Imaginea 1 din mesajul tău) ---
+elif st.session_state["etapa"] == "tabel_final":
+    st.markdown("# 👩‍💻 Aplicația Mariei")
     st.success("✅ Agentul AI a finalizat procesarea!")
     
     st.subheader("📊 Previzualizare Tabel Final")
     
-    # Construim tabelul exact ca în imaginea ta
+    # Construim tabelul pe baza selecției utilizatorului
     date_tabel = []
-    for idx, item in enumerate(st.session_state["rezultate_finale"]):
-        pret = 150.0 # Valoare exemplu
+    for idx, item in enumerate(st.session_state["selectie_utilizator"]):
+        pret = 150.0
         date_tabel.append({
             "ID": idx + 1,
             "Descriere": item,
@@ -84,21 +71,23 @@ elif st.session_state["etapa_procesare"] == "tabel":
     st.dataframe(df, use_container_width=True)
 
     st.divider()
-    
-    # ZONA DE EXPORT
     st.subheader("💾 Exportă Rezultatele")
-    nume_fisier = st.text_input("Nume fișier export:", value="Raport_Final_Maria")
     
-    # Export CSV sigur (pentru a evita erori de librării Excel pe server)
+    nume_fisier = st.text_input("Nume fișier export:", value="Raport_Final_Maria")
     csv = df.to_csv(index=False).encode('utf-8-sig')
 
     st.download_button(
-        label="📥 Descarcă Raportul pentru Excel",
+        label="📥 Descarcă Raportul Excel",
         data=csv,
         file_name=f"{nume_fisier}.csv",
         mime="text/csv"
     )
 
     if st.button("🔄 Începe o selecție nouă"):
-        st.session_state["etapa_procesare"] = "selectie"
+        st.session_state["etapa"] = "selectie"
         st.rerun()
+
+# Buton de Logout în Sidebar
+if st.sidebar.button("Logout"):
+    st.session_state["etapa"] = "login"
+    st.rerun()
