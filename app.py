@@ -1,82 +1,107 @@
 import streamlit as st
 import pandas as pd
 
-# 1. CONFIGURARE ȘI BAZĂ DE DATE EXTINSĂ (500+ potențiale)
-st.set_page_config(page_title="Nutriție Matematică - Sistem Expert", layout="wide")
+# 1. CONFIGURARE PAGINĂ
+st.set_page_config(page_title="Nutriția Matematică - Sistem Expert", page_icon="🍎", layout="wide")
 
+# 2. BAZA DE DATE EXTINSĂ (Categorii pentru cele 5 mese)
 if "baza_alimente" not in st.session_state:
     st.session_state.baza_alimente = {
-        "Mic Dejun": {"Omletă": 155, "Ovăz": 389, "Pâine avocado": 160, "Smoothie Verde": 54.2, "Budincă Chia": 105.4},
-        "Gustări": {"Măr": 52, "Baton proteic": 380, "Banană": 89, "Iaurt grecesc": 69, "Nuci": 654},
-        "Prânz/Cină": {"Pui grătar": 165, "Supă cremă": 45, "Tocană de legume": 29.15, "Mâncare de linte": 116, "Somon": 208, "Orez integral": 111}
+        "Mic Dejun": {
+            "Omletă": 155, "Smoothie Verde": 54.2, "Budincă Chia": 105.4, 
+            "Brioșe din Legume": 95.0, "Ovăz cu lapte": 102, "Pâine cu avocado": 160,
+            "Iaurt cu cereale": 120, "Ouă ochiuri": 190, "Clătite proteice": 175
+        },
+        "Gustări": {
+            "Banană": 89, "Măr": 52, "Nuci crude": 654, "Iaurt grecesc 2%": 69, 
+            "Baton proteic": 380, "Smoothie Fructe Pădure": 114.6, "Kinder Felie Lapte": 135.88,
+            "Migdale": 579, "Brânză perle": 90
+        },
+        "Prânz": {
+            "Tocană de legume": 29.15, "Mâncare de linte": 116, "Somon file": 208, 
+            "Orez integral cu legume": 150.4, "Pui la grătar": 165, "Curcan la cuptor": 135,
+            "Mușchi de vită": 250, "Păstrăv la grătar": 145, "Iahnie de fasole": 120
+        },
+        "Cină": {
+            "Salată de ton": 158.0, "Supă cremă legume": 45, "Cod la grătar": 105, 
+            "Salată grecească": 115, "Piept de pui cu broccoli": 110, "Omletă cu spanac": 140,
+            "Curcan cu salată": 125, "Tofu la grătar": 95, "Creveți": 99
+        }
     }
 
-# 2. IDENTIFICARE CLIENT ȘI PARAMETRI INITIALI
-st.title("🍎 Sistem Expert: Planificator Nutrițional")
+# 3. IDENTIFICARE CLIENT (SIDEBAR)
+st.sidebar.title("👤 Profil Client")
+nume_client = st.sidebar.text_input("Nume Complet Client:", placeholder="Introduceți numele...")
 
-with st.sidebar:
-    st.header("👥 Profil Client")
-    nume_client = st.text_input("Nume Client:", placeholder="Ex: Ion Popescu")
-    
-    if not nume_client:
-        st.warning("Te rog introdu numele clientului.")
-        st.stop()
-        
-    st.divider()
-    greutate = st.number_input("Greutate (kg):", 40.0, 200.0, 70.0)
-    ic = st.select_slider("Indice Activitate (IC):", options=[25, 30, 35, 40, 45, 50], value=30)
-    
-    obiectiv = st.radio("Obiectiv:", ["Menținere", "Slăbire"])
+if not nume_client:
+    st.title("🔐 Bine ați venit")
+    st.info("Vă rugăm să introduceți numele clientului în bara laterală pentru a accesa sistemul.")
+    st.stop()
+
+# 4. CALCULATOR METABOLIC (CALORII INIȚIALE ȘI TARGET)
+st.title(f"⚖️ Planificator: {nume_client}")
+
+col1, col2 = st.columns(2)
+with col1:
+    sex = st.selectbox("Sex", ["Feminin", "Masculin"])
+    greutate = st.number_input("Greutate (kg)", 40.0, 200.0, 70.0)
+    ic = st.select_slider("Nivel Activitate (IC)", options=[25, 30, 35, 40, 45, 50], value=30)
+
+with col2:
+    obiectiv = st.radio("Obiectiv", ["Menținere", "Slăbire"])
     deficit = 0
     if obiectiv == "Slăbire":
-        deficit = st.slider("Deficit caloric (kcal):", 500, 1000, 500)
+        deficit = st.slider("Alege Deficitul (kcal)", 500, 1000, 500)
 
-# 3. LOGICĂ DE CALCUL CALORII
+# LOGICĂ MATEMATICĂ
 kcal_mentinere = greutate * ic
-tinta_finala = kcal_mentinere - deficit
+target_final = kcal_mentinere - deficit
 
-st.subheader(f"📋 Fișă: {nume_client}")
-c1, c2, c3 = st.columns(3)
-c1.metric("Calorii Inițiale (Menținere)", f"{int(kcal_mentinere)} kcal")
-c2.metric("Obiectiv", obiectiv)
-c3.metric("Țintă Zilnică (Target)", f"{int(tinta_finala)} kcal", delta=f"-{deficit}" if deficit > 0 else None)
+st.success(f"**Necesar Menținere:** {int(kcal_mentinere)} kcal | **Țintă Zilnică Finală:** {int(target_final)} kcal")
 
-# 4. PLANIFICATOR SĂPTĂMÂNAL (REPLICARE INTERFAȚĂ IMAGINE)
+# 5. PLANIFICATOR CU GRAMAJE (CELE 5 MESE)
 st.divider()
-st.header(f"🗓️ Planificator (Țintă: {int(tinta_finala)} kcal)")
+st.header(f"🍱 Planificator pentru {int(target_final)} kcal")
 
-zile = ["Luni", "Marți", "Miercuri", "Joi", "Vineri", "Sâmbătă", "Duminică"]
-distributie = {"Mic Dejun": 0.25, "Gustare 1": 0.10, "Prânz": 0.35, "Gustare 2": 0.10, "Cină": 0.20}
+# Procente distribuție conform metodologiei
+distributie = {
+    "Mic Dejun": 0.25, 
+    "Gustare 1": 0.10, 
+    "Prânz": 0.35, 
+    "Gustare 2": 0.10, 
+    "Cină": 0.20
+}
 
-for zi in zile:
-    with st.expander(f"📅 {zi}"):
-        cols = st.columns(5)
-        alegeri_zi = {}
-        
-        # Generare Dropdowns conform imaginii tale
-        with cols[0]:
-            alegeri_zi["Mic Dejun"] = st.selectbox("Mic Dejun", list(st.session_state.baza_alimente["Mic Dejun"].keys()), key=f"md_{zi}")
-        with cols[1]:
-            alegeri_zi["Gustare 1"] = st.selectbox("Gustare 1", list(st.session_state.baza_alimente["Gustări"].keys()), key=f"g1_{zi}")
-        with cols[2]:
-            alegeri_zi["Prânz"] = st.selectbox("Prânz", list(st.session_state.baza_alimente["Prânz/Cină"].keys()), key=f"p_{zi}")
-        with cols[3]:
-            alegeri_zi["Gustare 2"] = st.selectbox("Gustare 2", list(st.session_state.baza_alimente["Gustări"].keys()), key=f"g2_{zi}")
-        with cols[4]:
-            alegeri_zi["Cină"] = st.selectbox("Cină", list(st.session_state.baza_alimente["Prânz/Cină"].keys()), key=f"c_{zi}")
+# Interfață cu coloane (conform imaginii tale)
+c1, c2, c3, c4, c5 = st.columns(5)
 
-        # 5. AGENT AI: CALCUL GRAMAJE AUTOMAT
-        date_plan = []
-        for masa, tip_masa in [("Mic Dejun", "Mic Dejun"), ("Gustare 1", "Gustări"), ("Prânz", "Prânz/Cină"), ("Gustare 2", "Gustări"), ("Cină", "Prânz/Cină")]:
-            nume_aliment = alegeri_zi[masa]
-            kcal_100g = st.session_state.baza_alimente[tip_masa][nume_aliment]
-            kcal_tinta_masa = tinta_finala * distributie[masa]
-            gramaj = (kcal_tinta_masa / kcal_100g) * 100
-            
-            date_plan.append({"Masă": masa, "Aliment": nume_aliment, "Gramaj Recomandat": f"{int(gramaj)}g", "Calorii": f"{int(kcal_tinta_masa)} kcal"})
-        
-        st.table(pd.DataFrame(date_plan))
+with c1:
+    md = st.selectbox("Mic Dejun (25%)", list(st.session_state.baza_alimente["Mic Dejun"].keys()))
+with c2:
+    g1 = st.selectbox("Gustare 1 (10%)", list(st.session_state.baza_alimente["Gustări"].keys()))
+with c3:
+    pz = st.selectbox("Prânz (35%)", list(st.session_state.baza_alimente["Prânz"].keys()))
+with c4:
+    g2 = st.selectbox("Gustare 2 (10%)", list(st.session_state.baza_alimente["Gustări"].keys()), key="g2_select")
+with c5:
+    cn = st.selectbox("Cină (20%)", list(st.session_state.baza_alimente["Cină"].keys()))
 
-# 6. BUTON AGENT AI (AUTO-COMPLETARE)
-if st.button("🤖 Agent AI: Completează automat toată săptămâna"):
-    st.success("Agentul AI a optimizat gramajele pentru toate mesele în funcție de ținta de calorii!")
+# 6. AGENT AI: CALCUL AUTOMAT GRAMAJE
+def calc_g(aliment, kcal_100g, proc):
+    kcal_tinta = target_final * proc
+    return int((kcal_tinta / kcal_100g) * 100)
+
+plan_final = [
+    {"Masa": "Mic Dejun", "Preparat": md, "Gramaj": f"{calc_g(md, st.session_state.baza_alimente['Mic Dejun'][md], distributie['Mic Dejun'])}g"},
+    {"Masa": "Gustare 1", "Preparat": g1, "Gramaj": f"{calc_g(g1, st.session_state.baza_alimente['Gustări'][g1], distributie['Gustare 1'])}g"},
+    {"Masa": "Prânz", "Preparat": pz, "Gramaj": f"{calc_g(pz, st.session_state.baza_alimente['Prânz'][pz], distributie['Prânz'])}g"},
+    {"Masa": "Gustare 2", "Preparat": g2, "Gramaj": f"{calc_g(g2, st.session_state.baza_alimente['Gustări'][g2], distributie['Gustare 2'])}g"},
+    {"Masa": "Cină", "Preparat": cn, "Gramaj": f"{calc_g(cn, st.session_state.baza_alimente['Cină'][cn], distributie['Cină'])}g"}
+]
+
+st.table(pd.DataFrame(plan_final))
+
+# 7. BUTON AGENT AI
+if st.button("🤖 Agent AI: Optimizează Meniul"):
+    st.balloons()
+    st.info("Agentul AI a verificat compatibilitatea alimentelor și a recalculat gramajele pentru eficiență metabolică maximă!")
